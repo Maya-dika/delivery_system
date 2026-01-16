@@ -1,0 +1,285 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% block title %}Dashboard{% endblock %}
+
+{% block bodyclass %} hold-transition sidebar-mini layout-fixed {% endblock bodyclass %}
+
+{% block extrastyle %}
+  <style>
+    canvas {
+      max-width: 400px !important;
+      max-height: 400px !important;
+    }
+  </style>
+
+{% endblock extrastyle %}
+
+{% block content %}
+  <!-- Content Wrapper. Contains page content -->
+  <div class="content-wrapper">
+    <!-- Content Header (Page header) -->
+    <div class="content-header">
+      <div class="container-fluid">
+        <div class="row mb-2">
+          <div class="col-sm-6">
+            <h1 class="m-0">Dashboard</h1>
+          </div><!-- /.col -->
+        </div><!-- /.row -->
+      </div><!-- /.container-fluid -->
+    </div>
+    <!-- /.content-header -->
+
+    <!-- Main content -->
+    <section class="content">
+      <div class="container-fluid">
+        <!-- Small boxes (Stat box) -->
+          <div class="row g-3">
+            <!-- KPI Row -->
+            <div class="col-md-3">
+              <div class="card kpi-card shadow-sm p-3">
+                <div class="text-muted">Delivery Success Rate</div>
+                <div class="h3 m-0">{{ delivery_success_rate }}%</div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card kpi-card shadow-sm p-3">
+                <div class="text-muted">Average Delivery Time</div>
+                <div class="h3 m-0">
+                  {% if average_delivery_time %}
+                    {{ average_delivery_time.days }} days
+                  {% else %}
+                    N/A
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card kpi-card shadow-sm p-3">
+                <div class="text-muted">On-Time Delivery Rate</div>
+                <div class="h3 m-0">
+                  {{ on_time_rate }}%
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card kpi-card shadow-sm p-3">
+                <div class="text-muted">Delayed Orders</div>
+                <div class="h3 m-0">{{ delayed_count }}</div>
+              </div>
+            </div>
+            
+            <div class="col-md-3">
+              <div class="card kpi-card shadow-sm p-3">
+                <div class="text-muted">New Orders (last 3 days)</div>
+                <div class="h3 m-0">{{ new_orders_3d }}</div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card kpi-card shadow-sm p-3">
+                <div class="text-muted">Awaiting Pickup</div>
+                <div class="h3 m-0">{{ awaiting_pickup }}</div>
+              </div>
+            </div>
+
+            <div class="col-md-3">
+              <div class="card kpi-card shadow-sm p-3">
+                <div class="text-muted">Delivered This Week</div>
+                <div class="h3 m-0">
+                  {{ delivered_week_total }}
+                  {# displays number of days present; chart below shows breakdown #}
+                </div>
+              </div>
+            </div>     
+
+            <div class="col-md-3">
+              <div class="card kpi-card shadow-sm p-3">
+                <div class="text-muted">Avg Delay (Late Orders)</div>
+                <div class="h3 m-0">
+                  {% if avg_delay %}
+                    {{ avg_delay.days }} days
+                  {% else %}
+                    N/A
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row mt-4">
+            <!-- Orders by Status -->
+            <div class="col-lg-4">
+              <div class="card chart-card shadow-sm p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                  <h6 class="m-0">Orders by Status</h6>
+                </div>
+                <canvas id="statusChart"></canvas>
+              </div>
+            </div>
+            <div class="col-lg-4">
+              <div class="card chart-card shadow-sm p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                  <h6 class="m-0">Orders in Warehouse</h6>
+                </div>
+                <canvas id="warehouseChart"></canvas>
+              </div>
+            </div>
+            <!-- Delivered This Week (per day) -->
+            <div class="col-lg-4">
+              <div class="card chart-card shadow-sm p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                  <h6 class="m-0">Delivered This Week (per day)</h6>
+                </div>
+                <canvas id="deliveredWeekChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts Row -->
+          <div class="row g-3 mt-1">
+            <!-- Orders by Status snapshot -->
+            <div class="col-lg-4">
+              <div class="card chart-card shadow-sm p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                  <h6 class="m-0">Orders by Status (snapshot)</h6>
+                </div>
+                <canvas id="statusChartSnapshot"></canvas>
+              </div>
+            </div>
+
+            <!-- Quick numbers from snapshot -->
+            <div class="col-lg-4">
+              <div class="card shadow-sm p-3">
+                <h6 class="m-0 mb-2">Snapshot Totals</h6>
+                <ul class="list-group list-group-flush">
+                  <li class="list-group-item d-flex justify-content-between px-0">
+                    <span>Delivered</span><strong>{{ snapshot.delivered }}</strong>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between px-0">
+                    <span>In Progress</span><strong>{{ snapshot.in_progress }}</strong>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between px-0">
+                    <span>Cancelled</span><strong>{{ snapshot.cancelled }}</strong>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between px-0">
+                    <span>Returned</span><strong>{{ snapshot.returned }}</strong>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+          <div class="col-lg-4">
+            <div class="card shadow-sm p-3">
+              <h6 class="m-0 mb-2">Delayed Orders (sample)</h6>
+              <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                  <thead>
+                    <tr><th>ID</th><th>Status</th><th>Expected Delivery</th></tr>
+                  </thead>
+                  <tbody>
+                    {% for o in delayed_sample %}
+                      <tr>
+                        <td><a href="{% url 'orders:order_update' o.id %}">#{{ o.tracking_number }}</a></td>
+                        <td>{{ o.order_status }}</td>
+                        <td>{{ o.estimated_delivery_date }}</td>
+                      </tr>
+                    {% empty %}
+                      <tr><td colspan="3" class="text-muted">No delayed orders 🎉</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+		
+      </div><!-- /.container-fluid -->
+    </section>
+    <!-- /.content -->
+  </div>
+  {% endblock content %}
+
+{% block extra_scripts %}
+  <script src="{% static 'dist/js/chart.min.js' %}"></script>
+
+  <script>
+    // Orders by Status
+    const statusCtx = document.getElementById('statusChart');
+    new Chart(statusCtx, {
+      type: 'pie',
+      data: {
+        labels: [{% for row in orders_by_status %}'{{ row.order_status }}',{% endfor %}],
+        datasets: [{
+          data: [{% for row in orders_by_status %}{{ row.total }},{% endfor %}],
+          backgroundColor: ['#4caf50','#2196f3','#ff9800','#f44336','#9c27b0', '#d3f513ff', '#f51371ff']
+        }]
+      }
+    });
+
+
+    const warehouseCtx = document.getElementById('warehouseChart');
+    new Chart(warehouseCtx, {
+      type: 'bar',
+      data: {
+        labels: [{% for row in orders_in_warehouse %}'{{ row.delivery_warehouse__name }}',{% endfor %}],
+        datasets: [{
+          label: 'Orders',
+          data: [{% for row in orders_in_warehouse %}{{ row.total }},{% endfor %}],
+          backgroundColor: '#4caf50'
+        }]
+      },
+      options: {
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+
+     // ---- Status snapshot (bar) ----
+    (function() {
+      const ctx = document.getElementById('statusChartSnapshot');
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Delivered', 'In Progress', 'Cancelled', 'Returned'],
+          datasets: [{
+            label: 'Orders',
+            data: [
+              {{ snapshot.delivered|default:0 }},
+              {{ snapshot.in_progress|default:0 }},
+              {{ snapshot.cancelled|default:0 }},
+              {{ snapshot.returned|default:0 }},
+            ]
+          }]
+        },
+        options: {
+          maintainAspectRatio: false,
+          scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+        }
+      });
+    })();
+
+    // ---- Delivered This Week (line) ----
+    (function() {
+      const labels = [{% for d in delivered_week %}'{{ d.day }}',{% endfor %}];
+      const values = [{% for d in delivered_week %}{{ d.total }},{% endfor %}];
+
+      const ctx = document.getElementById('deliveredWeekChart');
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Delivered',
+            data: values,
+            tension: 0.2
+          }]
+        },
+        options: {
+          maintainAspectRatio: false,
+          scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+        }
+      });
+    })();
+  </script>
+  {% endblock extra_scripts %}

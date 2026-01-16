@@ -1,0 +1,104 @@
+<!-- users.html -->
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block title %}Currencies{% endblock %}
+
+{% block extrastyle %}
+  <link rel="stylesheet" href="{% static 'vendor/datatables/css/datatables.min.css' %}">
+{% endblock extrastyle %}
+
+{% block bodyclass %} hold-transition sidebar-mini layout-fixed {% endblock bodyclass %}
+
+{% block content %}
+
+<div class="content-wrapper">
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h1>Currencies</h1>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+        <a href="{% url 'create_currency' %}" class="btn btn-primary"> + Create Currency</a>
+
+
+      <div class="table-responsive">
+        <table id="currenciesTable" class="table table-striped dtr-inline collapsed" style="width:100%">
+          <thead class="table-dark">
+            <tr>
+              <th>Name</th>
+              <th>Symbol</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="users-body" 
+            hx-get="{% url 'currencies' %}" 
+            hx-swap="outerHTML"
+            hx-trigger="from:body" >
+            {% for currency in currencies %}
+            <tr>
+              <td>{{ currency.name }}</td>
+              <td>{{ currency.symbol }}</td>
+              <td>
+                <a href="#" class="text-danger delete-currency" data-id="{{ currency.id }}" title="Delete"><i class="fas fa-trash"></i></a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+
+
+    </div><!-- /.container-fluid -->
+  </section>
+  <!-- /.content -->
+</div>
+
+{% endblock content %}
+
+{% block extra_scripts %}
+
+    <!-- Datatable -->
+    <script src="{% static 'vendor/datatables/js/datatables.min.js' %}"></script>
+
+    <script>
+
+      $(document).ready(function () {
+        $('#currenciesTable').DataTable({
+          "paging": true,
+          "lengthChange": false,
+          "searching": true,
+          "ordering": true,
+          "info": true,
+          "autoWidth": false,
+          "responsive": true,
+        });
+        $(document).on('click', '.delete-currency', function(e) {
+          e.preventDefault();
+          const id = $(this).data('id');
+          Swal.fire({
+            title: 'Delete currency?',
+            text: 'Only allowed if not used anywhere.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Delete',
+            confirmButtonColor: '#d33'
+          }).then((result) => {
+            if (!result.isConfirmed) return;
+            fetch(`/currencies/${id}/delete`, { method: 'POST', headers: { 'X-CSRFToken': getCSRFToken() } })
+              .then(r => r.json())
+              .then(handleApiResponse);
+          });
+        });
+      });
+
+    </script>
+
+{% endblock extra_scripts %}

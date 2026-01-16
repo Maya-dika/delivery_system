@@ -1,0 +1,127 @@
+{% extends 'layouts/base.html' %}
+{% load order_tags %}
+
+{% block title %}Order Tracking{% endblock title %}
+
+{% block content %}
+<div class="content-wrapper">
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          {% if not_found %}
+            <h1>Tracking Not Found</h1>
+          {% else %}
+            <h1>Order {{ order.tracking_number }}</h1>
+          {% endif %}
+        </div>
+        <div class="col-sm-6 text-right">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+
+      {% if not_found %}
+        <div class="alert alert-warning">No order found for tracking number <strong>{{ tracking_number }}</strong>.</div>
+      {% else %}
+      <div class="row">
+        <!-- Left: order details -->
+        <div class="col-lg-8">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">Shipping Address</h3></div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6">
+                  <h5>Supplier</h5>
+                  <div>{% if order.supplier %}{{ order.supplier.name }}{% endif %}</div>
+                  <div>{% if order.supplier_address %}{{ order.supplier_address }}{% endif %}</div>
+                </div>
+                <div class="col-md-6">
+                  <h5>Customer</h5>
+                  <div>{% if order.customer %}{{ order.customer.name }}{% endif %}</div>
+                  <div>{% if order.customer_address %}{{ order.customer_address }}{% endif %}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">Packages</h3></div>
+            <div class="card-body p-0">
+              <table class="table table-striped mb-0">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Description</th>
+                    <th>Type</th>
+                    <th class="text-right">Delivery</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for p in packages %}
+                  <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ p.description }}</td>
+                    <td>{% if p.package_type %}{{ p.package_type.package_type.name }}{% endif %}</td>
+                    <td class="text-right">{{ p.delivery_fees }}</td>
+                  </tr>
+                  {% empty %}
+                  <tr><td colspan="6" class="text-center text-muted">No packages</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-4"><strong>Order Status:</strong> {{ order.get_order_status_display }}</div>
+                <div class="col-md-4"><strong>Estimated Delivery:</strong> {% if estimated_delivery %}{{ estimated_delivery|date:'Y-m-d H:i' }}{% else %}-{% endif %}</div>
+                <div class="col-md-4 text-right">
+                  <div><strong>Sub-Total:</strong> {{ order|display_order_price }}</div>
+                  <div><strong>Delivery:</strong> {{ order.total_delivery_fees }}</div>
+                  <div><strong>Total:</strong> {{ order.total_amount }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: timeline -->
+        <div class="col-lg-4">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">Tracking</h3></div>
+            <div class="card-body">
+              <ul class="todo-list" data-widget="todo-list">
+                {% for item in timeline %}
+                  <li>
+                    <span class="handle">
+                      <i class="fas {{ item.icon }}"></i>
+                    </span>
+                    <span class="text">
+                      <strong>{{ item.title }}</strong><br>
+                      <span class="text-muted">{{ item.subtitle }}</span>
+                    </span>
+                    <span class="badge {% if item.status == 'done' %}badge-success{% elif item.status == 'pending' %}badge-warning{% elif item.status == 'cancelled' %}badge-danger{% else %}badge-secondary{% endif %}">
+                      {{ item.status|title }}
+                    </span>
+                    <div><span class="text-muted">{{ item.date|date:'Y-m-d H:i' }}</span></div>
+                  </li>
+                {% empty %}
+                  <div class="text-muted">No tracking updates yet.</div>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </section>
+</div>
+{% endblock %}

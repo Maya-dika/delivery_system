@@ -1,0 +1,104 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %} Routing Rules {% endblock %}
+{% block bodyclass %} hold-transition sidebar-mini layout-fixed {% endblock bodyclass %}
+
+
+{% block content %}
+<div class="content-wrapper">
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h4>Routing Rule</h4>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+        <form method="post">
+            {% csrf_token %}
+          
+            {{ form.as_p }}
+          
+            <h5 class="mt-4">Via Warehouses (in order)</h5>
+            {{ formset.management_form }}
+          
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="add-row-btn">+ Add Step</button>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Warehouse</th>
+                  <th>Step</th>
+                  <th>Delete?</th>
+                </tr>
+              </thead>
+              <tbody id="formset-body">
+                {% for steps_form in formset.forms %}
+                <tr>
+                    {{ steps_form.id }}  {# hidden input, even for new ones #}
+                  <td>{{ steps_form.warehouse }}</td>
+                  <td>{{ steps_form.position }}</td>
+                  <td>{{ steps_form.DELETE }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          
+            <button type="submit" class="btn btn-primary">Save</button>
+            <a href="{% url 'routing_rules' %}" class="btn btn-outline-secondary">Back to List</a>
+        </form> 
+    </div> <!-- container-fluid -->
+  </section>
+<!-- /.content -->
+</div>
+
+<!-- empty row template -->
+<table style="display:none">
+    <tbody>
+      <tr id="empty-form-template">
+        <td>__warehouse__</td>
+        <td><input type="number" name="steps-__prefix__-position" /></td>
+        <td><input type="checkbox" name="steps-__prefix__-DELETE" /></td>
+      </tr>
+    </tbody>
+  </table>
+
+{% endblock %}
+
+{% block extra_scripts %}
+
+<script>
+    document.getElementById("add-row-btn").addEventListener("click", function () {
+    const formsetBody = document.getElementById("formset-body");
+    const totalForms = document.getElementById("id_steps-TOTAL_FORMS");
+    const currentCount = parseInt(totalForms.value);
+
+    // Build a new row
+    const newRow = document.createElement("tr");
+    newRow.classList.add("formset-row");
+
+    // Use Django-generated empty form as template
+    const template = document.getElementById("empty-form-template").outerHTML;
+    newRow.innerHTML = template
+        .replace(/__prefix__/g, currentCount)
+        .replace("__warehouse__", `
+        <select name="steps-${currentCount}-warehouse" class="form-select">
+            {% for wh in warehouses %}
+            <option value="{{ wh.id }}">{{ wh.name }}</option>
+            {% endfor %}
+        </select>
+        `);
+
+    formsetBody.appendChild(newRow);
+    totalForms.value = currentCount + 1;
+    });
+</script>
+
+
+{% endblock extra_scripts %}
+  

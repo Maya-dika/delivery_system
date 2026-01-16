@@ -1,0 +1,95 @@
+<!-- users.html -->
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block title %}Suppliers{% endblock %}
+
+{% block extrastyle %}
+  <link rel="stylesheet" href="{% static 'vendor/datatables/css/datatables.min.css' %}">
+{% endblock extrastyle %}
+
+{% block bodyclass %} hold-transition sidebar-mini layout-fixed {% endblock bodyclass %}
+
+{% block content %}
+
+<div class="content-wrapper">
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h4>Customers</h4>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+      <!-- Add Button -->
+      <a href="{% url 'users:create_customer' %}" class="btn btn-primary">
+        + Create Customer
+      </a>
+
+      <div class="table-responsive">
+        <table id="customersTable" class="table table-striped dtr-inline collapsed" style="width:100%">
+          <thead class="table-dark">
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone Number</th>
+              <th>User</th>
+              <th>Active</th>
+            </tr>
+          </thead>
+          <tbody id="customers-body" hx-get="{% url 'users:customers' %}" hx-swap="outerHTML" hx-trigger="from:body">
+            {% for customer in customers %}
+            <tr>
+              <td><a href="{% url 'users:update_customer' customer.id %}">{{ customer.name }}</a></td>
+              <td>{{ customer.email }}</td>
+              <td>{{ customer.phone_number }}</td>
+              <td>{{ customer.user }}</td>
+              <td>{{ customer.active }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+
+
+    </div><!-- /.container-fluid -->
+  </section>
+  <!-- /.content -->
+</div>
+
+{% endblock content %}
+
+{% block extra_scripts %}
+
+    <!-- Datatable -->
+    <script src="{% static 'vendor/datatables/js/datatables.min.js' %}"></script>
+
+    <script>
+
+      $(document).ready(function () {
+        $('#customersTable').DataTable({
+          "paging": true,
+          "lengthChange": false,
+          "searching": true,
+          "ordering": true,
+          "info": true,
+          "autoWidth": false,
+          "responsive": true,
+        });
+      });
+
+      document.body.addEventListener('customersUpdated', function (evt) {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalForm'));
+        if (modal) modal.hide();
+        
+        location.reload();
+      });
+
+    </script>
+
+{% endblock extra_scripts %}

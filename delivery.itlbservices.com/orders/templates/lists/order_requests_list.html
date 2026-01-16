@@ -1,0 +1,245 @@
+<!-- users.html -->
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block title %}Order Requests{% endblock %}
+
+{% block extrastyle %}
+  <link rel="stylesheet" href="{% static 'vendor/datatables/css/datatables.min.css' %}">
+{% endblock extrastyle %}
+
+{% block bodyclass %} hold-transition sidebar-mini layout-fixed {% endblock bodyclass %}
+
+{% block content %}
+
+<div class="content-wrapper">
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-sm-6">
+          <h4>Order Requests</h4>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+      <form id="order-request-filter-form">
+        <div class="row">
+          <div class="col-md-2 col-sm-6">
+            <a href="{% url 'orders:order_request_new' %}" class="btn bg-primary">
+                + Create new Request
+            </a>
+          </div>
+
+          <div class="col-md-2 col-sm-6">
+            <select name="supplier" class="form-select">
+              <option value="">All Merchants</option>
+              {% for s in suppliers %}
+                <option value="{{ s.id }}">{{ s.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-md-2 col-sm-6">
+            <select name="warehouse" class="form-select">
+              <option value="">All Warehouses</option>
+              {% for w in warehouses %}
+                <option value="{{ w.id }}">{{ w.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        
+          <div class="col-md-2 col-sm-6">
+            <select name="driver" class="form-select">
+              <option value="">All Drivers</option>
+              {% for d in drivers %}
+                <option value="{{ d.id }}">{{ d.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        
+          <div class="col-md-2 col-sm-6">
+            <select name="status" class="form-select">
+              <option value="">All Statuses</option>
+              {% for value, label in statuses %}
+                <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        
+          <div class="col-md-2 col-sm-6">
+            <input type="date" name="created_at" class="form-control" />
+          </div>
+
+          <button type="submit" style="display: none;">Apply Filters</button>
+        </div>
+      </form>
+
+      <div class="row mb-2 mt-2">
+        <div class="col-6"></div>
+        <div class="col-6">
+          <div class="dropdown float-right" id="batch-requests-actions" style="display: none;">
+              <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                Actions
+              </button>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#" onclick="confirmOrderRequests(getSelectedOrderRequestIds())">Confirm Requests</a></li>
+                <li>
+                  <a class="dropdown-item"
+                          hx-get="{% url 'orders:assign_driver_form' type='pickup' %}"
+                          hx-target="#driver-modal-content-placeholder"
+                          hx-trigger="click"
+                          hx-swap="innerHTML"
+                          data-bs-toggle="modal"
+                          data-bs-target="#assignDriverModal">
+                      Assign Driver
+                  </a>
+                </li>
+                <li>
+                  <button class="dropdown-item" type="button" id="batch-cancel-requests-btn">
+                    Cancel Requests
+                  </button>
+                </li>
+              </ul>
+            </div>
+          </div>
+      </div>
+
+      <div class="table-responsive">
+        <table id="orderRequestsTable" class="table table-striped dtr-inline collapsed" style="width:100%">
+          <thead class="table-dark">
+            <tr>
+              <th><input type="checkbox" id="select-all-requests" /></th>
+              <th>Reference</th>
+              <th>Merchant</th>
+              <th>Warehouse</th>
+              <th>Driver</th>
+              <th>Number of Orders</th>
+              <th>Number of Packages</th>
+              <th>Created At</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="order-requests-body"></tbody>
+        </table>
+      </div>
+
+
+
+    </div><!-- /.container-fluid -->
+  </section>
+  <!-- /.content -->
+</div>
+
+{% include 'forms/assign_driver_modal.html' %}
+
+{% endblock content %}
+
+{% block extra_scripts %}
+
+    <!-- Datatable -->
+    <script src="{% static 'vendor/datatables/js/datatables.min.js' %}"></script>
+    <script src="{% static 'orders/js/order_request.js' %}"></script>
+
+    <script>
+      $(document).ready(function () {
+        const table = $('#orderRequestsTable').DataTable({
+          processing: true,
+          serverSide: true,
+          paging: true,
+          lengthChange: true,
+          lengthMenu: [20, 10, 30, 50, 100],
+          searching: true,
+          ordering: true,
+          info: true,
+          autoWidth: false,
+          responsive: true,
+          ajax: {
+            url: '{% url "orders:api_order_request_list" %}',
+            data: function (d) {
+              const params = new URLSearchParams(new FormData(document.getElementById('order-request-filter-form')));
+              params.forEach((v, k) => d[k] = v);
+            }
+          },
+          columns: [
+            {
+              data: 'id',
+              orderable: false,
+              searchable: false,
+              render: function (data) {
+                return `<input type=\"checkbox\" class=\"request-check\" value=\"${data}\">`;
+              }
+            },
+            {
+              data: 'reference',
+              render: function (data, type, row) {
+                const href = `/orders/order-requests/${row.id}/edit/`;
+                return `<a href=\"${href}\">${data}</a>`;
+              }
+            },
+            { data: 'supplier' },
+            { data: 'warehouse' },
+            { data: 'driver' },
+            { data: 'nb_orders' },
+            { data: 'nb_packages' },
+            { data: 'created_at' },
+            { data: 'status' }
+          ],
+          drawCallback: function () {
+            const api = this.api();
+            api.rows({ page: 'current' }).every(function () {
+              const data = this.data();
+              const id = String(data.id);
+              const checked = window.selectedOrderRequestIds && window.selectedOrderRequestIds.has(id);
+              const node = this.node();
+              const cb = $(node).find('input.request-check');
+              cb.prop('checked', !!checked);
+            });
+            // Save current page ids for pager in form view
+            try {
+              const data = api.rows({ page: 'current' }).data().toArray();
+              const ids = data.map(r => r.id);
+              localStorage.setItem('order_requests_page_ids', JSON.stringify(ids));
+            } catch (e) { /* no-op */ }
+          }
+        });
+
+        // Selection management
+        window.selectedOrderRequestIds = new Set();
+        const actionBox = document.getElementById('batch-requests-actions');
+        function updateActionVisibility() {
+          actionBox.style.display = window.selectedOrderRequestIds.size ? 'block' : 'none';
+        }
+
+        // Row checkbox
+        $('#orderRequestsTable tbody').on('change', 'input.request-check', function () {
+          const id = String(this.value);
+          if (this.checked) window.selectedOrderRequestIds.add(id); else window.selectedOrderRequestIds.delete(id);
+          const all = $('#orderRequestsTable tbody input.request-check');
+          const allChecked = all.length && all.filter(':checked').length === all.length;
+          $('#select-all-requests').prop('checked', allChecked);
+          updateActionVisibility();
+        });
+
+        // Select-all current page only
+        $('#select-all-requests').on('change', function () {
+          const checked = this.checked;
+          const rows = table.rows({ page: 'current' }).nodes();
+          $('input.request-check', rows).each(function () {
+            $(this).prop('checked', checked);
+            const id = String(this.value);
+            if (checked) window.selectedOrderRequestIds.add(id); else window.selectedOrderRequestIds.delete(id);
+          });
+          updateActionVisibility();
+        });
+
+        // Filters reload
+        $('#order-request-filter-form').on('change', 'select, input', function () {
+          table.ajax.reload();
+        });
+      });
+    </script>
+
+{% endblock extra_scripts %}

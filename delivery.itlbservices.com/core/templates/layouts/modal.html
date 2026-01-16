@@ -1,0 +1,27 @@
+{% block modals %}
+<!-- Modal HTML -->
+<div class="modal fade" id="modalForm1" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modal-title">Modal Form</h5>
+        <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <!-- dynamic form will load here -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalForm2" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content bg-white" id="modal-content-placeholder">
+      <!-- content will be injected from static file -->
+    </div>
+  </div>
+</div>
+
+{% endblock %}

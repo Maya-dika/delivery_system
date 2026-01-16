@@ -1,0 +1,109 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block title %}Employees Performance{% endblock %}
+{% block bodyclass %}hold-transition sidebar-mini layout-fixed{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-6"><h4>Drivers Performance</h4></div>
+        <div class="col-6">
+          <div class="row g-2 justify-content-end">
+            <div class="col-12 col-md-3">
+              <div class="dropdown w-100">
+                <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" data-bs-toggle="dropdown">Date Range</button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li><a class="dropdown-item" href="#" data-preset="today">Today</a></li>
+                  <li><a class="dropdown-item" href="#" data-preset="last7">Last 7 days</a></li>
+                  <li><a class="dropdown-item" href="#" data-preset="thisMonth">This month</a></li>
+                  <li><a class="dropdown-item" href="#" data-preset="lastMonth">Last month</a></li>
+                </ul>
+              </div>
+            </div>
+            <div class="col-6 col-md-3"><input type="date" id="ep-from" class="form-control" /></div>
+            <div class="col-6 col-md-3"><input type="date" id="ep-to" class="form-control" /></div>
+            <div class="col-6 col-md-3"><button class="btn btn-outline-primary w-100" id="ep-print" type="button">Print PDF</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="row mb-2">
+        <div class="col-12">
+          <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#ep-extra" aria-expanded="false">Extra Filters</button>
+        </div>
+      </div>
+      <div class="collapse" id="ep-extra">
+        <div class="card card-body">
+          <div class="row" style="gap:8px;">
+            <div class="col-md-3">
+              <label class="form-label">Delivery Fees =</label>
+              <input type="number" step="0.01" id="ep-delivery-fees" class="form-control" placeholder="e.g. 4.00" />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Driver Commission =</label>
+              <input type="number" step="0.01" id="ep-driver-commission" class="form-control" placeholder="e.g. 1.50" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+      <div class="card">
+        <div class="card-body">
+          <div class="table-responsive">
+            <table id="epTable" class="table table-striped" style="width:100%">
+              <thead class="table-dark">
+                <tr>
+                  <th>Employee</th>
+                  <th>Orders</th>
+                  <th>Fees</hth>
+                  <th>Commission</th>
+                  <th>Profit</th>
+                </tr>
+              </thead>
+              <tfoot>
+                <tr>
+                  <th class="text-end">Totals:</th>
+                  <th id="ep-ft-orders"></th>
+                  <th id="ep-ft-fees"></th>
+                  <th id="ep-ft-commission"></th>
+                  <th id="ep-ft-profit"></th>
+                </tr>
+              </tfoot>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+  <script src="{% static 'vendor/datatables/js/datatables.min.js' %}"></script>
+  <script src="{% static 'orders/js/employees_performance.js' %}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function(){
+      const btn = document.getElementById('ep-print');
+      if (!btn) return;
+      btn.addEventListener('click', function(){
+        const fromEl = document.getElementById('ep-from');
+        const toEl = document.getElementById('ep-to');
+        const feesEq = document.getElementById('ep-delivery-fees');
+        const commEq = document.getElementById('ep-driver-commission');
+        const p = new URLSearchParams();
+        if (fromEl.value) p.set('from', fromEl.value);
+        if (toEl.value) p.set('to', toEl.value);
+        if (feesEq.value) p.set('delivery_fees', feesEq.value);
+        if (commEq.value) p.set('driver_commission', commEq.value);
+        window.open(`/orders/reports/drivers-performance/print/?${p.toString()}`, '_blank');
+      });
+    });
+  </script>
+{% endblock %}

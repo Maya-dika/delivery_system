@@ -1,0 +1,29 @@
+<script>
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('modalForm2'));
+    if (modal) modal.hide();
+  
+    // Dynamically get entity type (customer or supplier)
+    const entityType = "{{ entity_type }}";
+    const addressId = "{{ address.id }}";
+    const addressLabel = "{{ address.city }}, {{ address.street }} {{ address.building }}";
+  
+    if (entityType === "customer") {
+      const customerAddressSelect = document.getElementById('id_customer_address');
+      if (customerAddressSelect) {
+        const newOption = new Option(addressLabel, addressId, true, true);
+        customerAddressSelect.appendChild(newOption);
+        customerAddressSelect.value = addressId;
+      }
+    }
+  
+    if (entityType === "supplier") {
+      const supplierAddressSelect = document.getElementById('id_supplier_address');
+      if (supplierAddressSelect) {
+        const newOption = new Option(addressLabel, addressId, true, true);
+        supplierAddressSelect.appendChild(newOption);
+        supplierAddressSelect.value = addressId;
+      }
+    }
+  </script>
+  

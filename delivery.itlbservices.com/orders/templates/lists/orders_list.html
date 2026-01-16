@@ -1,0 +1,350 @@
+<!-- users.html -->
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block title %}Orders{% endblock %}
+
+{% block extrastyle %}
+  <link rel="stylesheet" href="{% static 'vendor/datatables/css/datatables.min.css' %}">
+{% endblock extrastyle %}
+
+{% block bodyclass %} hold-transition sidebar-mini layout-fixed {% endblock bodyclass %}
+
+{% block content %}
+
+<div class="content-wrapper">
+    <section class="content-header">
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-lg-12 col-md-12 col-sm-12">
+          {% if order_request_id %}
+            <nav aria-label="breadcrumb" class="mb-3" style="font-size: 1.4rem;">
+              <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'orders:order_request_list' %}">
+                  Order Requests
+                  </a></li>
+                <li class="breadcrumb-item">
+                  <a href="{% url 'orders:order_request_edit' order_request_id %}">
+                    Request #{{ order_request_id }}
+                  </a>
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">Orders</li>
+              </ol>
+            </nav>
+          {% else %}
+            <h4>All Orders</h4>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <form id="labels-form" method="post" action="/orders/multi-print-labels/" target="_blank" style="display:none">
+    {% csrf_token %}
+  </form>
+
+  <section class="content">
+    <div class="container-fluid">
+      <form id="filter-form" class="mb-3">
+        <div class="row">
+          <div class="col-md-2 col-sm-6">
+            {% if not view_only and not order_request_id %}
+              <a href="{% url 'orders:order_create' %}" class="btn bg-primary">
+                  + Create Order
+              </a>
+            {% endif %}
+          </div>
+          <div class="col-md-2 col-sm-3">
+            <label for="filter-status" class="form-label">Order Status</label>
+            <select id="filter-status" name="status" class="form-select">
+              <option value="">In Progress</option>
+              <option value="all_statuses">All Statuses</option>
+              {% for value, label in statuses %}
+                <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+              <option value="for_exchange">For Exchange</option>
+            </select>
+          </div>
+          <div class="col-md-2 col-sm-3">
+            <label for="filter-driver" class="form-label">Driver</label>
+            <select id="filter-driver" name="driver" class="form-select">
+              <option value="">All Drivers</option>
+              {% for d in drivers %}
+                <option value="{{ d.id }}">{{ d.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2 col-sm-3">
+            <label for="filter-current-location" class="form-label">Current Location</label>
+            <select id="filter-current-location" name="current_location" class="form-select">
+              <option value="">All Locations</option>
+              {% for loc in stock_locations %}
+                <option value="{{ loc.id }}">{{ loc.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2 col-sm-3">
+            <label for="filter-next-destination" class="form-label">Next Destination</label>
+            <select id="filter-next-destination" name="next_destination" class="form-select">
+              <option value="">All Locations</option>
+              {% for loc in stock_locations %}
+                <option value="{{ loc.id }}">{{ loc.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2 col-sm-3">
+            <label for="filter-order-date" class="form-label">Order Date</label>
+            <input type="date" id="filter-order-date" name="order_date" class="form-control" />
+          </div>
+          <div class="col-md-2 d-none col-sm-3">
+            <button type="submit" class="btn btn-primary">Apply</button>
+          </div>
+        </div>
+      </form>
+
+      <div class="row mb-2">
+        <div class="col-6">
+          {% if request.GET.order_request_id %}
+            <input type="hidden" id="order-request-id" value="{{ request.GET.order_request_id }}">
+          {% endif %}
+        </div>
+        <div class="col-6">
+        <div class="dropdown float-right" id="batch-actions" style="display: none;">
+            <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+              Actions
+            </button>
+            {% if not view_only %}
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" onclick="confirmSelectedOrders()">Confirm Orders</a></li>
+              <li>
+                <a class="dropdown-item"
+                      hx-get="{% url 'orders:assign_driver_form' type='pickup' %}"
+                      hx-target="#driver-modal-content-placeholder"
+                      hx-trigger="click"
+                      hx-swap="innerHTML"
+                      data-bs-toggle="modal"
+                      data-bs-target="#assignDriverModal">
+                  Assign Pickup Driver
+              </a>
+              </li>
+              <li>
+                <a class="dropdown-item"
+                      hx-get="{% url 'orders:assign_driver_form' type='delivery' %}"
+                      hx-target="#driver-modal-content-placeholder"
+                      hx-trigger="click"
+                      hx-swap="innerHTML"
+                      data-bs-toggle="modal"
+                      data-bs-target="#assignDriverModal">
+                  Re-Assign Delivery Driver
+              </a>
+              </li>
+              <li>
+                <button class="dropdown-item" type="button" id="arrived-to-warehouse-btn">
+                  Arrived to Warehouse
+                </button>
+              </li>
+              <li>
+                <a class="dropdown-item"
+                   hx-get="{% url 'orders:send_to_next_warehouse_form' %}"
+                   hx-target="#next-warehouse-modal-content-placeholder"
+                   hx-trigger="click"
+                   hx-swap="innerHTML"
+                   data-bs-toggle="modal"
+                   data-bs-target="#sendToNextWarehouseModal">
+                   Send to Next Warehouse
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item"
+                  hx-get="{% url 'orders:assign_driver_form' type='out_for_delivery' %}"
+                  hx-target="#driver-modal-content-placeholder"
+                  hx-trigger="click"
+                  hx-swap="innerHTML"
+                  data-bs-toggle="modal"
+                  data-bs-target="#assignDriverModal">
+                  Out for Delivery
+                </a>
+              </li>
+              <li>
+                <button class="dropdown-item" type="button" id="order-delivered-btn">
+                  Delivered to Customer
+                </button>
+              </li>
+              <li>
+                <button class="dropdown-item" type="button" id="print-orders-labels">
+                  Print Labels (PDF)
+                </button>
+              </li>
+            </ul>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table id="ordersTable" class="table table-striped dtr-inline collapsed" style="width:100%">
+          <thead class="table-dark">
+            <tr>
+              <th><input type="checkbox" id="select-all-orders" /></th>
+              <th>Tracking Number</th>
+              <th>Order Request</th>
+              <th>Order Date</th>
+              <th>Merchant</th>
+              <th>Customer</th>
+              <th>Merchant Location</th>
+              <th>Customer Location</th>
+              <th>Order Status</th>
+              <th>Order Price</th>
+              <th>Delivery Fees (USD)</th>
+              {% comment %} <th>Actions</th> {% endcomment %}
+            </tr>
+          </thead>
+        </table>
+      </div>
+
+
+
+    </div><!-- /.container-fluid -->
+  </section>
+  <!-- /.content -->
+</div>
+
+{% include 'forms/assign_driver_modal.html' %}
+
+{% endblock content %}
+
+{% block extra_scripts %}
+
+    <!-- Datatable -->
+    <script src="{% static 'vendor/datatables/js/datatables.min.js' %}"></script>
+    <script src="{% static 'orders/js/orders_list.js' %}"></script>
+    <script src="{% static 'orders/js/common.js' %}"></script>
+
+    <script>
+      const orderRequestId = "{{ request.GET.order_request_id|default:'' }}";
+      $(document).ready(function () {
+        const table = $('#ordersTable').DataTable({
+          processing: true,
+          serverSide: true,
+          lengthMenu: [20, 10, 30, 50, 100],
+          order: [[3, 'desc']],  // 3 = index of `order_date` column
+          ajax: {
+            url: '/orders/api/orders/',
+            data: function (d) {
+              d.status = $('#filter-status').val();
+              d.order_date = $('#filter-order-date').val();
+              d.driver = $('#filter-driver').val();
+              d.current_location = $('#filter-current-location').val();
+              d.next_destination = $('#filter-next-destination').val();
+
+              // Add order_request_id if available
+              if (typeof orderRequestId !== "undefined" && orderRequestId) {
+                d.order_request_id = orderRequestId;
+              }
+            }
+          },
+          columns: [
+            {
+              data: 'id',
+              render: function (data) {
+                return `<input type="checkbox" class="order-checkbox" value="${data}">`;
+              },
+              orderable: false,
+              searchable: false
+            },
+            { data: 'tracking_number', 
+              render: function (data, type, row) {
+                let url = `/orders/${row.id}/edit`;
+                  if (typeof orderRequestId !== "undefined" && orderRequestId) {
+                    url += "?from_order_request=1";
+                  }
+                  return `<a href="${url}">${row.tracking_number}</a>`;
+                },
+              orderable: false,
+            },
+            { data: 'order_request', orderable: false },
+            { data: 'order_date' },
+            { data: 'supplier', orderable: false },
+            { data: 'customer', orderable: false },
+            { data: 'supplier_address', orderable: false },
+            { data: 'customer_address', orderable: false },
+            {
+              data: 'order_status',
+              render: function (data, type, row) {
+                let badge = `<span>${data}</span>`;
+                if (row.is_cancelled && row.order_status !== "Cancelled" && row.order_status !== "Returned" ) {
+                  badge += ` <span class="badge bg-danger" style="font-size: 0.9rem">Cancelled</span>`;
+                }
+                if (row.is_exchanged && row.order_status !== "Cancelled" && row.order_status !== "Returned") {
+                  badge += ` <span class="badge bg-warning" style="font-size: 0.9rem">For Exchange</span>`;
+                }
+                if (row.is_exchanged && row.order_status === "Returned") {
+                  badge += ` <span class="badge bg-warning" style="font-size: 0.9rem">Exchanged</span>`;
+                }
+                return badge;
+              },
+              orderable: false,
+              searchable: false
+            },
+            { data: 'order_price' },
+            { data: 'total_delivery_fees' },
+          ],
+          drawCallback: function () {
+            bindCheckboxHandlers();
+            // Save current page order IDs to localStorage for pager on order form view
+            try {
+              const api = this.api();
+              const data = api.rows({ page: 'current' }).data().toArray();
+              const ids = data.map(r => r.id);
+              localStorage.setItem('orders_page_ids', JSON.stringify(ids));
+            } catch (e) { /* no-op */ }
+          }
+        });
+
+        $('#filter-form').on('submit', function (e) {
+          e.preventDefault();
+          table.ajax.reload();
+        });
+
+        // Automatically reload table when filters change
+        $('#filter-status, #filter-order-date, #filter-driver, #filter-current-location, #filter-next-destination').on('change', function () {
+          table.ajax.reload();
+        });
+
+        function bindCheckboxHandlers() {
+          const selectAll = $('#select-all-orders');
+          const checkboxes = $('.order-checkbox');
+          const actionBox = $('#batch-actions');
+      
+          // Reset current page selection on load
+          checkboxes.prop('checked', false);
+          selectAll.prop('checked', false);
+      
+          // On row checkbox change
+          checkboxes.on('change', function () {
+            const id = $(this).val();
+            this.checked ? selectedOrderIds.add(id) : selectedOrderIds.delete(id);
+            toggleActionBox();
+          });
+      
+          // On select-all toggle
+          selectAll.on('change', function () {
+            checkboxes.each(function () {
+              $(this).prop('checked', selectAll.prop('checked')).trigger('change');
+            });
+            toggleActionBox();
+          });
+      
+          toggleActionBox();
+        }
+      
+        function toggleActionBox() {
+          const actionBox = document.getElementById('batch-actions');
+          actionBox.style.display = selectedOrderIds.size === 0 ? 'none' : 'block';
+        }
+
+      });
+      
+    </script>
+
+{% endblock extra_scripts %}

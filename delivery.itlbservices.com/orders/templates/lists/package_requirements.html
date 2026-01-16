@@ -1,0 +1,95 @@
+{% extends 'layouts/base.html' %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block title %}Package Requirements{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h4>Package Requirements</h4>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-2 col-sm-6">
+          <a href="{% url 'orders:package_requirement_create' %}" class="btn btn-primary">+ Add Requirement</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+      <div class="table-responsive">
+      <table id="packageTypesTable" class="table table-striped dtr-inline collapsed" style="width=100%">
+        <thead class="table-dark">
+          <tr>
+            <th>Name</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in requirements %}
+          <tr>
+            <td><a href="{% url 'orders:package_requirement_update' item.id  %}">{{ item.name }}</a></td>
+            <td>
+              <a href="#" class="text-danger delete-requirement" data-id="{{ item.id }}" title="Delete"><i class="fas fa-trash"></i></a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+
+{% block extra_scripts %}
+
+    <!-- Datatable -->
+    <script src="{% static 'vendor/datatables/js/datatables.min.js' %}"></script>
+
+    <script>
+
+      $(document).ready(function () {
+        $('#packageTypesTable').DataTable({
+          "paging": true,
+          "lengthChange": false,
+          "searching": true,
+          "ordering": true,
+          "info": true,
+          "autoWidth": false,
+          "responsive": true,
+        });
+
+        // Delete handler
+        $(document).on('click', '.delete-requirement', function(e) {
+          e.preventDefault();
+          const id = $(this).data('id');
+          Swal.fire({
+            title: 'Delete requirement?',
+            text: 'This action cannot be undone.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Delete',
+            confirmButtonColor: '#d33'
+          }).then((result) => {
+            if (!result.isConfirmed) return;
+            fetch(`/orders/package-requirements/${id}/delete/`, {
+              method: 'POST',
+              headers: { 'X-CSRFToken': getCSRFToken() }
+            })
+            .then(r => r.json())
+            .then(handleApiResponse);
+          });
+        });
+      });
+
+    </script>
+
+{% endblock extra_scripts %}

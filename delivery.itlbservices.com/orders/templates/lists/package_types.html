@@ -1,0 +1,96 @@
+{% extends 'layouts/base.html' %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block title %}Package Types{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h4>Package Types</h4>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-2 col-sm-6">
+          <a href="{% url 'orders:package_type_create' %}" class="btn btn-primary">+ Add Type</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+      <div class="table-responsive">
+        <table class="table table-striped dtr-inline collapsed" id="packageRequirementsTable" style="width:100%">
+          <thead class="table-dark">
+            <tr>
+              <th>Name</th>
+              <th>Size</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in types %}
+            <tr>
+              <td><a href="{% url 'orders:package_type_update' item.id  %}">{{ item.name }}</a></td>
+              <td>{{ item.size }}</td>
+              <td>
+                <a href="#" class="text-danger delete-type" data-id="{{ item.id }}" title="Delete"><i class="fas fa-trash"></i></a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+
+    <!-- Datatable -->
+    <script src="{% static 'vendor/datatables/js/datatables.min.js' %}"></script>
+
+    <script>
+
+      $(document).ready(function () {
+        $('#packageRequirementsTable').DataTable({
+          "paging": true,
+          "lengthChange": false,
+          "searching": true,
+          "ordering": true,
+          "info": true,
+          "autoWidth": false,
+          "responsive": true,
+        });
+
+        // Delete handler
+        $(document).on('click', '.delete-type', function(e) {
+          e.preventDefault();
+          const id = $(this).data('id');
+          Swal.fire({
+            title: 'Delete package type?',
+            html: 'This will remove related price list items. Existing orders keep their stored fees, but the type reference may be cleared.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Delete',
+            confirmButtonColor: '#d33'
+          }).then((result) => {
+            if (!result.isConfirmed) return;
+            fetch(`/orders/package-types/${id}/delete/`, {
+              method: 'POST',
+              headers: { 'X-CSRFToken': getCSRFToken() }
+            })
+            .then(r => r.json())
+            .then(handleApiResponse);
+          });
+        });
+      });
+
+    </script>
+
+{% endblock extra_scripts %}

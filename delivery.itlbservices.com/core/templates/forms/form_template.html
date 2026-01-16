@@ -1,0 +1,84 @@
+{% extends 'layouts/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ form_title }}{% endblock %}
+{% block bodyclass %}hold-transition sidebar-mini layout-fixed{% endblock %}
+
+{% block content %}
+  <div class="content-wrapper">
+    <section class="content-header">
+      <div class="container-fluid">
+        <h4>{{ form_title }}</h4>
+      </div>
+    </section>
+
+    <section class="content">
+      <div class="container-fluid">
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="card mb-4">
+            <div class="card-body">
+              <div class="row">
+                <div class="col-6">
+                  {{ form|crispy }}
+
+                  {# Show current logo if exists #}
+                  {% if form.instance.logo %}
+                    <div class="mb-3">
+                        <label>Current Logo</label><br>
+                        <img src="{{ form.instance.logo.url }}" 
+                            alt="Company Logo" 
+                            style="max-width: 200px; max-height: 200px; border: 1px solid #ccc; padding: 4px;">
+                    </div>
+                  {% endif %}
+
+                </div>
+                <div class="col-6">
+                  {% if address_form %}
+                    {{ address_form|crispy }}
+                  {% endif %}
+                  {% if form.user_form %}
+                    {{ form.user_form|crispy }}
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {% if sequence_form %}
+          <div class="card mb-4">
+            <div class="card-header">
+              <strong>Numbering & Sequences</strong>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6">
+                  <label class="form-label">Order Prefix</label>
+                  {{ sequence_form.order_prefix }}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Order Digits</label>
+                  {{ sequence_form.order_seq_length }}
+                </div>
+              </div>
+              <div class="row mt-2">
+                <div class="col-md-6">
+                  <label class="form-label">Order Request Prefix</label>
+                  {{ sequence_form.order_request_prefix }}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Order Request Digits</label>
+                  {{ sequence_form.order_request_seq_length }}
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          
+          <button type="submit" class="btn btn-primary">Save</button>
+          <a href="{{ redirect_back_url }}" class="btn btn-outline-secondary">Back</a>
+        </form>
+      </div>
+    </section>
+  </div>
+{% endblock %}

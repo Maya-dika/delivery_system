@@ -1,0 +1,84 @@
+{% extends 'layouts/base.html' %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block title %}Routing Rules{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h4>Routing Rules</h4>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-2 col-sm-6">
+          <a href="{% url 'add_routing_rule' %}" class="btn btn-primary">+ Add Rule</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+      <div class="table-responsive">
+        <table class="table table-bordered" id="routingTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Via Warehouses (in order)</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for rule in rules %}
+              <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ rule.from_warehouse.name }}</td>
+                <td>{{ rule.to_warehouse.name }}</td>
+                <td>
+                  {% for step in rule.steps.all %}
+                    {{ step.warehouse.name }}{% if not forloop.last %} → {% endif %}
+                  {% empty %}
+                    —
+                  {% endfor %}
+                </td>
+                <td>
+                  <a href="{% url 'edit_routing_rule' rule.pk %}" class="fas fa-pencil-alt center"></a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+
+    <!-- Datatable -->
+    <script src="{% static 'vendor/datatables/js/datatables.min.js' %}"></script>
+
+    <script>
+
+      $(document).ready(function () {
+        $('#routingTable').DataTable({
+          "paging": true,
+          "lengthChange": false,
+          "searching": true,
+          "ordering": true,
+          "info": true,
+          "autoWidth": false,
+          "responsive": true,
+        });
+      });
+
+    </script>
+
+{% endblock extra_scripts %}

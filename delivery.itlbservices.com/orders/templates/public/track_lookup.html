@@ -1,0 +1,44 @@
+{% extends 'layouts/auth_base.html' %}
+
+{% block title %}Track Order{% endblock title %}
+
+{% block bodyclass %} login-page {% endblock bodyclass %}
+
+{% block content %}
+<div class="login-box">
+  <div class="login-logo">
+    <a href="/">Track Your Delivery</a>
+  </div>
+  <div class="card">
+    <div class="card-body login-card-body">
+      <p class="login-box-msg">Enter your tracking number</p>
+
+      {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+      {% endif %}
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="input-group mb-3">
+          <input type="text" class="form-control" name="tracking_number" placeholder="Tracking number" required>
+          <div class="input-group-append">
+            <div class="input-group-text">
+              <span class="fas fa-barcode"></span>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-6">
+            <a href="{% url 'users:login' %}" class="btn btn-outline-secondary btn-block">Sign In</a>
+          </div>
+          <div class="col-6">
+            <button type="submit" class="btn btn-primary btn-block">Track Order</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+

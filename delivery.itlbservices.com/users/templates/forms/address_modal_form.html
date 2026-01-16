@@ -1,0 +1,46 @@
+<form method="post" hx-post="{% url 'users:create_address' entity_type entity_id %}" hx-target="#modal-content-placeholder" hx-swap="outerHTML">
+    {% csrf_token %}
+    <div class="modal-header">
+      <h5 class="modal-title">Create Address</h5>
+      <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+        <span aria-hidden="true">×</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="row">
+        <div class="col-md-6">
+          <label for="country">Country</label>
+          <select id="country" name="country" class="form-select" required>
+            <option value="">-- Select Country --</option>
+            {% for code, name in countries %}
+              <option value="{{ code }}">{{ name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label for="address-city">City</label>
+          <input class="form-control" id="address-city" name="city">
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-6">
+          <label for="address-street">Street</label>
+          <input class="form-control" id="address-street" name="street">
+        </div>
+        <div class="col-md-3">
+          <label for="address-building">Building</label>
+          <input class="form-control" id="address-building" name="building">
+        </div>
+        <div class="col-md-3">
+          <label for="address-zip_code">Zip Code</label>
+          <input class="form-control" id="address-zip_code" name="zip_code">
+        </div>
+      </div>
+
+      <hr/>
+
+    </div>
+    <div class="modal-footer">
+      <button type="submit" class="btn btn-success">Save</button>
+    </div>
+</form>

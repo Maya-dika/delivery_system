@@ -1,0 +1,85 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block title %}Account Statement{% endblock %}
+{% block bodyclass %}hold-transition sidebar-mini layout-fixed{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6"><h4>Account Statement</h4></div>
+        <div class="col-sm-6">
+          <div class="row g-2 justify-content-end">
+            <div class="col-12 col-md-3">
+              <div class="dropdown w-100">
+                <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" data-bs-toggle="dropdown">Date Range</button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li><a class="dropdown-item" href="#" data-preset="today">Today</a></li>
+                  <li><a class="dropdown-item" href="#" data-preset="last7">Last 7 days</a></li>
+                  <li><a class="dropdown-item" href="#" data-preset="thisMonth">This month</a></li>
+                  <li><a class="dropdown-item" href="#" data-preset="lastMonth">Last month</a></li>
+                </ul>
+              </div>
+            </div>
+            <div class="col-6 col-md-3"><input type="date" id="as-from" class="form-control" /></div>
+            <div class="col-6 col-md-3"><input type="date" id="as-to" class="form-control" /></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid" id="as-root">
+      <div class="row">
+        <div class="col-md-8">
+          <div class="card">
+            <div class="card-header"><strong>Summary</strong></div>
+            <div class="card-body">
+              <div class="d-flex justify-content-between">
+                <div>
+                  <div class="text-muted">Orders</div>
+                  <div id="as-total-orders" style="font-size:1.6rem; font-weight:600;">0</div>
+                </div>
+                <div>
+                  <div class="text-muted">Profit USD</div>
+                  <div id="as-profit-usd" style="font-size:1.6rem; font-weight:600;">0.00</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-8">
+          <div class="card">
+            <div class="card-header"><strong>By Delivery Fees</strong></div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Total Orders</th>
+                      <th>Delivery Fees (USD)</th>
+                      <th>Total Commission (USD)</th>
+                      <th>Profit (USD)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="as-by-fees-body">
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+  <script src="{% static 'orders/js/account_statement.js' %}"></script>
+{% endblock %}

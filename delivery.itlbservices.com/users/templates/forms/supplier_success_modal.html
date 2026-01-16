@@ -1,0 +1,27 @@
+<script>
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('modalForm2'));
+    modal.hide();
+  
+    // Add new supplier to the supplier select (Select2 label uses name [phone])
+    const supplierSelect = document.getElementById('id_supplier');
+    const supplierLabel = "{{ supplier.name }} [{{ supplier.phone_number }}]";
+    if (window.jQuery && $(supplierSelect).hasClass('select2-hidden-accessible')) {
+      const opt = new Option(supplierLabel, "{{ supplier.id }}", true, true);
+      $(supplierSelect).append(opt).trigger('change');
+    } else {
+      const newOption = new Option(supplierLabel, "{{ supplier.id }}", true, true);
+      supplierSelect.appendChild(newOption);
+      supplierSelect.value = "{{ supplier.id }}";
+      supplierSelect.dispatchEvent(new Event('change'));
+    }
+  
+    // Add new address to the supplier_address select
+    const addressSelect = document.getElementById('id_supplier_address');
+    const addr = "{{ address.city }}, {{ address.street }} {{ address.building }}";
+    const newAddressOption = new Option(addr, "{{ address.id }}", true, true);
+    addressSelect.appendChild(newAddressOption);
+    addressSelect.value = "{{ address.id }}";
+    addressSelect.dispatchEvent(new Event('change'));
+</script>
+  

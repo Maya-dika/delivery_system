@@ -1,0 +1,269 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ form_title }}{% endblock %}
+{% block bodyclass %} hold-transition sidebar-mini layout-fixed {% endblock bodyclass %}
+
+{% block extrastyle %}
+<style>
+  .default-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  
+  .default-checkbox {
+    position: relative;
+    width: 50px;
+    height: 25px;
+  }
+  
+  .default-checkbox input[type="checkbox"] {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  
+  .checkbox-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+    transition: all 0.3s ease;
+    border-radius: 25px;
+    border: 2px solid #e9ecef;
+  }
+  
+  .checkbox-slider:before {
+    position: absolute;
+    content: "";
+    height: 17px;
+    width: 17px;
+    left: 2px;
+    bottom: 2px;
+    background: white;
+    transition: all 0.3s ease;
+    border-radius: 50%;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  }
+  
+  .default-checkbox input:checked + .checkbox-slider {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border-color: #28a745;
+  }
+  
+  .default-checkbox input:checked + .checkbox-slider:before {
+    transform: translateX(25px);
+  }
+  
+  .default-label {
+    font-weight: 500;
+    color: #495057;
+    user-select: none;
+    cursor: pointer;
+  }
+  
+  .default-checkbox input:checked ~ .default-label {
+    color: #28a745;
+    font-weight: 600;
+  }
+  
+  .default-icon {
+    font-size: 16px;
+    margin-right: 5px;
+    transition: all 0.3s ease;
+  }
+  
+  .default-checkbox input:checked ~ .default-label .default-icon {
+    color: #ffc107;
+    transform: scale(1.2);
+  }
+</style>
+{% endblock extrastyle %}
+
+{% block content %}
+<div class="content-wrapper">
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h4>{{ form_title }}</h4>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+      <form method="post">
+        {% csrf_token %}
+        {{ formset.management_form }}
+
+        <!-- Pricelist Details Card -->
+        <div class="card mb-4">
+          <h5 class="card-header">Pricelist Details</h5>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6">
+                {{ form.name|as_crispy_field }}
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label class="form-label">Default Pricelist</label>
+                  <div class="default-checkbox-wrapper">
+                    <div class="default-checkbox">
+                      {{ form.default }}
+                      <span class="checkbox-slider"></span>
+                    </div>
+                    <label for="{{ form.default.id_for_label }}" class="default-label">
+                      <i class="fas fa-star default-icon"></i>Set as Default
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pricelist Items Card -->
+        <div class="card mb-4">
+          <h5 class="card-header d-flex justify-content-between align-items-center">
+            <span>Pricelist Items</span>
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addPricelistItem()">+ Add Item</button>
+          </h5>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-striped" id="pricelist-items-table">
+                <thead>
+                  <tr>
+                    <th>Source Warehouse</th>
+                    <th>Destination Warehouse</th>
+                    <th>Package Type</th>
+                    <th>Fees</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="pricelist-items">
+                  {% for item_form in formset %}
+                    <tr class="pricelist-item-row">
+                      <td style="display: none;">
+                        {{ item_form.id }}
+                        {{ item_form.DELETE }}
+                      </td>
+                      <td>{{ item_form.source_warehouse }}</td>
+                      <td>{{ item_form.destination_warehouse }}</td>
+                      <td>{{ item_form.package_type }}</td>
+                      <td>{{ item_form.fees }}</td>
+                      <td>
+                        <button type="button" class="btn btn-sm btn-danger remove-item-btn" onclick="removePricelistItem(this)">Delete</button>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save Pricelist</button>
+        <a href="{% url 'orders:delivery_pricelist_list' %}" class="btn btn-outline-secondary">Back to List</a>
+      </form>
+    </div><!-- /.container-fluid -->
+  </section>
+  <!-- /.content -->
+</div>
+
+<!-- Hidden template for cloning new item forms -->
+<template id="empty-item-template">
+  <tr class="pricelist-item-row">
+    <td style="display: none;">
+      <input type="hidden" name="form-__prefix__-id" value="">
+      <input type="checkbox" name="form-__prefix__-DELETE" value="on" style="display: none;">
+    </td>
+    <td>
+      <select type="number" name="form-__prefix__-source_warehouse" class="form-control" step="0.01" id="id_form-__prefix__-source_warehouse">
+        <option value="">---------</option>
+        {% for warehouse in warehouses %}
+          <option value="{{ warehouse.id }}">{{ warehouse.name }}</option>
+        {% endfor %}
+      </select>
+    </td>
+    <td>
+      <select type="number" name="form-__prefix__-destination_warehouse" class="form-control" step="0.01" id="id_form-__prefix__-destination_warehouse">
+        <option value="">---------</option>
+        {% for warehouse in warehouses %}
+          <option value="{{ warehouse.id }}">{{ warehouse.name }}</option>
+        {% endfor %}
+      </select>    </td>
+    <td>
+      <select name="form-__prefix__-package_type" class="form-control" id="id_form-__prefix__-package_type">
+        <option value="">---------</option>
+        {% for package_type in package_types %}
+          <option value="{{ package_type.id }}">{{ package_type.name }}</option>
+        {% endfor %}
+      </select>
+    </td>
+    <td>
+      <input type="number" name="form-__prefix__-fees" class="form-control" step="0.01" id="id_form-__prefix__-fees">
+    </td>
+    <td>
+      <button type="button" class="btn btn-sm btn-danger remove-item-btn" onclick="removePricelistItem(this)">Delete</button>
+    </td>
+  </tr>
+</template>
+
+{% endblock content %}
+
+{% block extra_scripts %}
+<script>
+  let itemCount = {{ formset.total_form_count }};
+
+  function addPricelistItem() {
+    const container = document.getElementById('pricelist-items');
+    const template = document.getElementById('empty-item-template');
+    const noItemsRow = document.getElementById('no-items-row');
+    
+    // Hide the "no items" row
+    if (noItemsRow) {
+      noItemsRow.style.display = 'none';
+    }
+    
+    // Clone the template
+    const clone = template.content.cloneNode(true);
+    
+    // Replace __prefix__ with the current form count
+    const cloneHtml = clone.firstElementChild.outerHTML.replace(/__prefix__/g, itemCount);
+    
+    // Insert the new row
+    container.insertAdjacentHTML('beforeend', cloneHtml);
+    
+    // Update the management form
+    const totalForms = document.querySelector('#id_form-TOTAL_FORMS');
+    itemCount++;
+    totalForms.value = itemCount;
+  }
+
+  function removePricelistItem(button) {
+    const itemRow = button.closest('.pricelist-item-row');
+    const deleteInput = itemRow.querySelector('input[name*="-DELETE"]');
+    
+    
+    if (deleteInput) {
+      deleteInput.value = 'on';  // Django formsets expect 'on' for checkbox-style fields
+      deleteInput.checked = true; // Also set checked property
+      itemRow.style.display = 'none';
+    } else {
+      itemRow.remove();
+      // Update form count for new items
+      const totalForms = document.querySelector('#id_form-TOTAL_FORMS');
+      itemCount--;
+      totalForms.value = itemCount;
+    }
+  }
+</script>
+{% endblock extra_scripts %}

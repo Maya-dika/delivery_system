@@ -1,0 +1,179 @@
+<!-- users.html -->
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block title %}Warehouses{% endblock %}
+
+{% block extrastyle %}
+  <link rel="stylesheet" href="{% static 'vendor/datatables/css/datatables.min.css' %}">
+{% endblock extrastyle %}
+
+{% block bodyclass %} hold-transition sidebar-mini layout-fixed {% endblock bodyclass %}
+
+{% block content %}
+
+<div class="content-wrapper">
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h4>Warehouses</h4>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+      <div class="row mb-2 align-items-center">
+        <div class="col-12 col-md-5 mb-2 mb-md-0">
+          <a href="{% url 'create_warehouse' %}" class="btn btn-primary"> + Create Warehouse</a>
+        </div>
+        <div class="col-6 col-md-5 d-flex justify-content-md-end">
+          <div id="wh-actions" class="dropdown" style="display:none;">
+            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+              <i class="fa fa-cog"></i> Actions
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="#" id="wh-archive">Archive</a></li>
+              <li><a class="dropdown-item" href="#" id="wh-unarchive">Unarchive</a></li>
+              <li><a class="dropdown-item text-danger" href="#" id="wh-delete">Delete</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="col-6 col-md-2 mb-2 mb-md-0">
+          <select id="wh-status-filter" class="form-select">
+            <option value="1" {% if active_flag|default:1 %}selected{% endif %}>Active</option>
+            <option value="0" {% if not active_flag %}selected{% endif %}>Archived</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table id="warehousesTable" class="table table-striped dtr-inline collapsed" style="width:100%">
+          <thead class="table-dark">
+            <tr>
+              <th style="width:30px;"><input type="checkbox" id="select-all-warehouses" /></th>
+              <th>Name</th>
+              <th>Warehouse Manager</th>
+              <th>Address</th>
+              <th>Company</th>
+            </tr>
+          </thead>
+          <tbody id="users-body" 
+            hx-get="{% url 'warehouses' %}" 
+            hx-swap="outerHTML"
+            hx-trigger="warehousesUpdated from:body" >
+            {% for warehouse in warehouses %}
+            <tr>
+              <td><input type="checkbox" class="wh-checkbox" value="{{ warehouse.id }}" /></td>
+              <td><a href="{% url 'update_warehouse' warehouse.pk %}">{{ warehouse.name }}</a></td>
+              <td>{{ warehouse.warehouse_manager }}</td>
+              <td>{{ warehouse.address }}</td>
+              <td>{{ warehouse.company }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+
+
+    </div><!-- /.container-fluid -->
+  </section>
+  <!-- /.content -->
+</div>
+
+{% endblock content %}
+
+{% block extra_scripts %}
+
+    <!-- Datatable -->
+    <script src="{% static 'vendor/datatables/js/datatables.min.js' %}"></script>
+
+    <script>
+
+      $(document).ready(function () {
+        $('#warehousesTable').DataTable({
+          paging: true,
+          lengthChange: false,
+          searching: true,
+          ordering: true,
+          info: true,
+          autoWidth: false,
+          responsive: true,
+          columnDefs: [
+            { targets: 0, orderable: false }
+          ]
+        });
+
+        // Status filter
+        const statusSel = document.getElementById('wh-status-filter');
+        if (statusSel) {
+          statusSel.addEventListener('change', function(){
+            const url = new URL(window.location.href);
+            url.searchParams.set('active', this.value);
+            window.location.href = url.toString();
+          });
+        }
+
+        const actionBox = document.getElementById('wh-actions');
+        const selectAll = document.getElementById('select-all-warehouses');
+        function updateActionBox(){
+          const any = document.querySelectorAll('.wh-checkbox:checked').length > 0;
+          actionBox.style.display = any ? 'block' : 'none';
+        }
+        document.addEventListener('change', function(e){
+          if (e.target && e.target.classList.contains('wh-checkbox')) updateActionBox();
+        });
+        if (selectAll) selectAll.addEventListener('change', function(){
+          document.querySelectorAll('.wh-checkbox').forEach(cb => { cb.checked = selectAll.checked; });
+          updateActionBox();
+        });
+
+        function getSelectedIds(){
+          return Array.from(document.querySelectorAll('.wh-checkbox:checked')).map(cb => parseInt(cb.value));
+        }
+        function postJson(url, payload){
+          return fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json', 'X-CSRFToken': getCSRFToken() }, body: JSON.stringify(payload) }).then(r=>r.json());
+        }
+        document.getElementById('wh-archive').addEventListener('click', function(e){
+          e.preventDefault();
+          const ids = getSelectedIds();
+          if (!ids.length) return;
+          postJson('/warehouses/archive', { ids }).then(resp => {
+            handleApiResponse(resp);
+          });
+        });
+        document.getElementById('wh-delete').addEventListener('click', function(e){
+          e.preventDefault();
+          const ids = getSelectedIds();
+          if (!ids.length) return;
+          postJson('/warehouses/delete', { ids }).then(resp => {
+            handleApiResponse(resp);
+          });
+        });
+
+        const unarchiveBtn = document.getElementById('wh-unarchive');
+        if (unarchiveBtn) {
+          unarchiveBtn.addEventListener('click', function(e){
+            e.preventDefault();
+            const ids = getSelectedIds();
+            if (!ids.length) return;
+            postJson('/warehouses/unarchive', { ids }).then(resp => {
+              handleApiResponse(resp);
+            });
+          });
+        }
+      });
+
+      document.body.addEventListener('warehousesUpdated', function (evt) {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalForm'));
+        if (modal) modal.hide();
+        
+        location.reload();
+      });
+
+    </script>
+
+{% endblock extra_scripts %}

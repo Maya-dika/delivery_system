@@ -1,0 +1,96 @@
+<!-- users.html -->
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block title %}Merchants{% endblock %}
+
+{% block extrastyle %}
+  <link rel="stylesheet" href="{% static 'vendor/datatables/css/datatables.min.css' %}">
+{% endblock extrastyle %}
+
+{% block bodyclass %} hold-transition sidebar-mini layout-fixed {% endblock bodyclass %}
+
+{% block content %}
+
+<div class="content-wrapper">
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h4>Merchants</h4>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+      <a href="{% url 'users:create_supplier' %}" class="btn btn-primary"> + Create Merchant</a>
+
+
+      <div class="table-responsive">
+        <table id="suppliersTable" class="table table-striped dtr-inline collapsed" style="width:100%">
+          <thead class="table-dark">
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone Number</th>
+              <th>Warehouse</th>
+              <th>User</th>
+              <th>Active</th>
+            </tr>
+          </thead>
+          <tbody id="suppliers-body" hx-get="{% url 'users:suppliers' %}" hx-swap="outerHTML" hx-trigger="suppliersUpdated from:body">
+            {% for supplier in suppliers %}
+            <tr>
+              <td><a href="{% url 'users:update_supplier' supplier.id %}">{{ supplier.name }}</a></td>
+              <td>{{ supplier.email }}</td>
+              <td>{{ supplier.phone_number }}</td>
+              <td>{{ supplier.warehouse }}</td>
+              <td>{{ supplier.user }}</td>
+              <td>{{ supplier.active }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+
+
+    </div><!-- /.container-fluid -->
+  </section>
+  <!-- /.content -->
+</div>
+
+{% endblock content %}
+
+{% block extra_scripts %}
+
+    <!-- Datatable -->
+    <script src="{% static 'vendor/datatables/js/datatables.min.js' %}"></script>
+
+    <script>
+
+      $(document).ready(function () {
+        $('#suppliersTable').DataTable({
+          "paging": true,
+          "lengthChange": true,
+          "lengthMenu": [20, 10, 30, 50, 100],
+          "searching": true,
+          "ordering": true,
+          "info": true,
+          "autoWidth": false,
+          "responsive": true,
+        });
+      });
+
+      document.body.addEventListener('suppliersUpdated', function (evt) {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalForm'));
+        if (modal) modal.hide();
+        
+        location.reload();
+      });
+
+    </script>
+
+{% endblock extra_scripts %}

@@ -1,0 +1,122 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block title %}General Report{% endblock %}
+{% block bodyclass %}hold-transition sidebar-mini layout-fixed{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-md-2 col-sm-6"><h4>General Report</h4></div>
+        <div class="col-md-3 col-sm-6">
+          <div class="row g-2">
+            <div class="col-md-4">
+              <div class="dropdown w-100">
+                <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" data-bs-toggle="dropdown">Date Range</button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li><a class="dropdown-item" href="#" data-preset="today">Today</a></li>
+                  <li><a class="dropdown-item" href="#" data-preset="last7">Last 7 days</a></li>
+                  <li><a class="dropdown-item" href="#" data-preset="thisMonth">This month</a></li>
+                  <li><a class="dropdown-item" href="#" data-preset="lastMonth">Last month</a></li>
+                </ul>
+              </div>
+            </div>
+            <div class="col-md-4 col-sm-6"><input type="date" id="gr-from" class="form-control" /></div>
+            <div class="col-md-4 col-sm-6"><input type="date" id="gr-to" class="form-control" /></div>
+          </div>
+        </div>
+        <div class="col-md-2 col-sm-3">
+          <select id="gr-status" class="form-select">
+            <option value="">All Statuses</option>
+            {% for value, label in statuses %}
+              <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2 col-sm-3">
+          <select id="gr-driver" class="form-select">
+            <option value="">Delivery Driver</option>
+            {% for d in drivers %}
+              <option value="{{ d.id }}">{{ d.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2 col-sm-3">
+          <select id="gr-payment" class="form-select">
+            <option value="">Payment Method</option>
+            <option value="cash">Cash</option>
+            <option value="card">Card</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+		<div class="col-md-1 col-sm-3"><button class="btn btn-outline-primary w-100" id="gr-print" type="button">Print</button></div>
+	</div>
+      <div class="row mb-2 mt-2">
+        <div class="col-12">
+          <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#gr-extra" aria-expanded="false">Extra Filters</button>
+        </div>
+      </div>
+      <div class="collapse" id="gr-extra">
+        <div class="card card-body">
+          <div class="row" style="gap:8px;">
+            <div class="col-md-3">
+              <label class="form-label">Delivery Fees =</label>
+              <input type="number" step="0.01" id="gr-delivery-fees" class="form-control" placeholder="e.g. 4.00" />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Driver Commission =</label>
+              <input type="number" step="0.01" id="gr-driver-commission" class="form-control" placeholder="e.g. 1.50" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+      <div class="card">
+        <div class="card-body">
+          <div class="table-responsive">
+            <table id="grTable" class="table table-striped" style="width:100%">
+              <thead class="table-dark">
+                <tr>
+                  <th>Date</th>
+                  <th>Tracking</th>
+                  <th>Supplier</th>
+                  <th>Driver</th>
+                  <th>Order Price</th>
+                  <th>Delivery Fees</th>
+                  <th>Driver Commission</th>
+                  <th>Profit</th>
+                  <th>Status</th>
+                  <th>Invoice Status</th>
+                  <th>Payment Method</th>
+                </tr>
+              </thead>
+              <tfoot>
+                <tr>
+                  <th colspan="5" class="text-end">Totals:</th>
+                  {% comment %} <th id="ft-total-amount"></th> {% endcomment %}
+                  <th id="ft-delivery-fees"></th>
+                  <th id="ft-driver-commission"></th>
+                  <th id="ft-profit"></th>
+                  <th colspan="3"></th>
+                </tr>
+              </tfoot>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+  <script src="{% static 'vendor/datatables/js/datatables.min.js' %}"></script>
+  <script src="{% static 'orders/js/general_report.js' %}"></script>
+{% endblock %}

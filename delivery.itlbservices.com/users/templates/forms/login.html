@@ -1,0 +1,90 @@
+{% extends 'layouts/auth_base.html' %}
+
+{% block title %} Log in {% endblock title %}
+
+{% block bodyclass %} login-page {% endblock bodyclass %}
+
+{% block content %}
+<style>
+  body.login-page {
+    background: url('/media/background.webp') no-repeat center center fixed;
+    background-size: cover;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    
+  }
+  /* subtle overlay to blend content over background */
+  body.login-page::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.12) 40%, rgba(255,255,255,0.18) 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .login-box {
+    {% comment %} margin: 2.5rem 16% 2.5rem auto; /* right gutter */ {% endcomment %}
+    z-index: 1; /* above overlay */
+  }
+  .login-box .card {
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.28);
+    border: 0;
+  }
+  .login-logo a { color: #0d6efd; font-weight: 600; }
+  .login-card-body .input-group-text { background: #f3f6f9; }
+  .login-card-body .btn-primary { box-shadow: none; }
+  .login-card-body .btn-outline-primary { box-shadow: none; }
+</style>
+<div class="login-box">
+  <div class="login-logo">
+    <a href="/"></a>
+  </div>
+  <!-- /.login-logo -->
+  <div class="card">
+    <div class="card-body login-card-body">
+      <p class="login-box-msg">Sign in to start your session</p>
+
+      <form method="post">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          {% for error in form.non_field_errors  %}
+            <small class="text-danger mb-3">{{ error }}</small>
+          {% endfor %}
+        {% endif %}
+
+        {% for field in form %}
+        <div class="input-group mb-3">
+          {{field}}
+          <div class="input-group-append">
+            <div class="input-group-text">
+              <span class="fas {% if field.name == 'username' %} fa-user {% else %}  fa-lock {% endif %}"></span>
+            </div>
+          </div>
+        </div>
+        <small class="text-danger">{{ field.errors }}</small>
+        {% endfor %}
+        <div class="row align-items-center">
+          <div class="col-6">
+            <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+          </div>
+          <div class="col-6 text-end">
+            <a href="{% url 'users:password_reset' %}" class="btn btn-link">Forget Pass?</a>
+          </div>
+        </div>
+      </form>
+
+      <div class="mt-4 text-center">
+        <div class="mb-2" style="font-weight:600;">Track your order</div>
+        <a href="{% url 'orders:public_track_lookup' %}" class="btn btn-outline-primary">Track Order</a>
+      </div>
+    </div>
+    <!-- /.login-card-body -->
+  </div>
+</div>
+
+{% endblock %}

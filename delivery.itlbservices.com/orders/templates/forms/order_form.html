@@ -1,0 +1,685 @@
+{% extends 'layouts/base.html' %}
+{% load crispy_forms_tags %}
+{% load order_tags %}
+{% load static %}
+
+{% block title %}{{ form_title }} {% endblock %}
+{% block bodyclass %}hold-transition sidebar-mini layout-fixed{% endblock %}
+
+{% block content %}
+    <div class="content-wrapper" id="order-form-page">
+
+    <style>
+      .ribbon {
+        position: absolute;
+        top: 20px; /* adjust as needed */
+        left: -50px;
+        transform: rotate(-45deg);
+        background-color: red ;
+        color: white;
+        padding: 0.5em 3em;
+        font-weight: bold;
+        z-index: 999;
+        font-size: 1.2rem;
+        text-align: center;
+        white-space: nowrap;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      }
+      .ribbon-container {
+        position: relative; /* needed for absolute ribbon */
+      }
+    </style>
+
+    {% if order_form.instance.order_status == 'cancelled' or order_form.instance.is_cancelled %}
+      <div class="ribbon-container">
+        <div class="ribbon">Cancelled</div>
+      </div>
+    {% endif %}
+
+
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h4>{{ form_title }}</h4>
+        </div>
+        <div class="col-sm-6">
+          <div class="d-flex justify-content-end align-items-center" style="gap:12px;">
+
+            <div class="dropdown">
+              {% if allowed_actions %}
+              <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                Actions
+              </button>
+            {% if order_id %}
+              <ul class="dropdown-menu">
+                {% if 'confirm_order' in allowed_actions %}
+                  <li><a class="dropdown-item" href="#" onclick="confirmOrder({{ order_form.instance.pk }})">Confirm Order</a></li>
+                {% endif %}
+
+                {% if 'assign_driver' in allowed_actions %}
+                  <li>
+                    <a class="dropdown-item"
+                      hx-get="{% url 'orders:assign_driver_form' type='pickup' %}"
+                      hx-target="#driver-modal-content-placeholder"
+                      hx-trigger="click"
+                      hx-swap="innerHTML"
+                      data-bs-toggle="modal"
+                      data-bs-target="#assignDriverModal">
+                      Assign Pickup Driver
+                    </a>
+                  </li>
+                  <li>
+                    <a class="dropdown-item"
+                      hx-get="{% url 'orders:assign_driver_form' type='delivery' %}"
+                      hx-target="#driver-modal-content-placeholder"
+                      hx-trigger="click"
+                      hx-swap="innerHTML"
+                      data-bs-toggle="modal"
+                      data-bs-target="#assignDriverModal">
+                      Re-Assign Delivery Driver
+                    </a>
+                  </li>
+                {% endif %}
+                {% if 'arrived_to_warehouse' in allowed_actions %}
+                  <li>
+                    <button class="dropdown-item" type="button" onclick="confirmArrivalToWarehouse({{ order_form.instance.pk }})">
+                      Arrived to Warehouse
+                    </button>
+                  </li>
+                {% endif %}
+                {% if 'send_to_next_warehouse' in allowed_actions %} 
+                  <li>
+                    <a class="dropdown-item"
+                      hx-get="{% url 'orders:send_to_next_warehouse_form' %}"
+                      hx-target="#next-warehouse-modal-content-placeholder"
+                      hx-trigger="click"
+                      hx-swap="innerHTML"
+                      data-bs-toggle="modal"
+                      data-bs-target="#sendToNextWarehouseModal">
+                      Send To Next Warehouse
+                    </a>
+                  </li>
+                {% endif %}
+                {% if 'return_to_supplier' in allowed_actions %}
+                  <li>
+                    <button class="dropdown-item" type="button" onclick="openReturnOrderModal({{ order_id }}, 'to_supplier')">
+                      Send To Merchant
+                    </button>
+                  </li>
+                {% endif %}
+                {% if 'out_for_delivery' in allowed_actions %}
+                  <li>
+                    <a class="dropdown-item"
+                      hx-get="{% url 'orders:assign_driver_form' type='out_for_delivery' %}"
+                      hx-target="#driver-modal-content-placeholder"
+                      hx-trigger="click"
+                      hx-swap="innerHTML"
+                      data-bs-toggle="modal"
+                      data-bs-target="#assignDriverModal">
+                      Out for Delivery
+                    </a>
+                  </li>
+                {% endif %}
+                {% if 'delivered_to_customer' in allowed_actions %}
+                  <li>
+                    <button class="dropdown-item" type="button" id="order-delivered-btn">
+                      Delivered to Customer
+                    </button>
+                  </li>
+                {% endif %}
+                {% if 'cancel_order' in allowed_actions %}
+                  <li>
+                    <button class="dropdown-item" type="button" onclick="cancelOrder({{ order_id }})">
+                      Cancel Order
+                    </button>
+                  </li>
+                {% endif %}
+                {% if 'return_and_exchange' in allowed_actions %}
+                  <li>
+                    <button
+                      class="dropdown-item"
+                      type="button"
+                      onclick="openReturnOrderModal({{ order_id }}, 'exchange')"
+                    >
+                      Return &amp; Exchange
+                    </button>
+                  </li>
+                {% endif %}
+                {% if 'return_and_cancel' in allowed_actions %}
+                  <li>
+                    <button class="dropdown-item" type="button" onclick="openReturnOrderModal({{ order_id }}, 'cancel')">
+                      Return &amp; Cancel
+                    </button>
+                  </li>
+                {% endif %}
+                {% if 'returned_to_supplier' in allowed_actions %}
+                    <li>
+                      <button class="dropdown-item" type="button" onclick="returnedToSupplier({{ order_id }})">
+                        Returned To Merchant
+                      </button>
+                    </li>
+                {% endif %}
+                <li>
+                  <a class="dropdown-item"
+                    href="{% url 'orders:print_labels' pk=order_id %}">
+                    Print Labels (PDF)
+                  </a>
+                </li>
+              </ul>
+            {% endif %} <!-- end if order_id -->
+            {% endif %} <!-- end if allowed_actions -->
+            </div>
+            <span id="order-pager" class="d-none align-items-center" style="gap:8px; font-weight:500;">
+              <span id="order-pager-counter">1 / 1</span>
+              <div class="btn-group btn-group-sm" role="group" aria-label="Order navigation">
+                <button type="button" class="btn btn-outline-secondary" id="order-pager-prev" title="Previous">
+                  <i class="fa fa-chevron-left"></i>
+                </button>
+                <button type="button" class="btn btn-outline-secondary" id="order-pager-next" title="Next">
+                  <i class="fa fa-chevron-right"></i>
+                </button>
+              </div>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+      <form id="order-form" method="post" data-update="{{ is_update|yesno:"true,false" }}" data-order-id="{{ order_id }}">
+        {% csrf_token %}
+
+        <input type="hidden" name="order_id" id="order-id" value="{{ order_id }}">
+        <div class="card mb-4">
+          <h5 class="card-header">Order Info</h5>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6">
+                {{ order_form.tracking_number|as_crispy_field }}
+              </div>
+              <div class="col-md-6">
+                {{ order_form.order_status|as_crispy_field }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6">
+            <div class="card mb-4">
+              <h5 class="card-header">Merchant/Sender</h5>
+              <div class="card-body">
+                <div class="row">
+                    <div class="col-md-10 mb-3">
+                      <label for="id_supplier">Merchant</label>
+                      {{ order_form.supplier }}
+                    </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-10">
+                    <label for="id_supplier_address">Merchant Address</label>
+                    <select name="supplier_address" id="id_supplier_address" class="form-select" {% if view_only or order_form.instance.order_status != 'draft' %}disabled{% endif %}>
+                      {% if not order_form.instance.supplier_address %}
+                        <option value="">Select Merchant</option>
+                      {% else %}
+                        <option value="{{ order_form.instance.supplier_address.id }}">
+                          {{ order_form.instance.supplier_address }}
+                        </option>
+                      {% endif %}
+                    </select>
+                  </div>
+                </div>
+                <div class="row mt-3">
+                  <div class="col-md-10">
+                    {{ order_form.pickup_warehouse|as_crispy_field }}
+                  </div>
+                </div>
+                <div class="row mt-3">
+                  <div class="col-md-10">
+                    {{ order_form.delivery_pricelist|as_crispy_field }}
+                  </div>
+                </div>
+                
+                <div class="row mt-3">
+                  <div class="col-md-5">
+                    <label class="form-label">Direct To Warehouse</label>
+                    <div>
+                      <input type="checkbox" id="id_is_direct_to_warehouse" name="is_direct_to_warehouse"
+                        {% if order_form.instance.is_direct_to_warehouse %}checked{% endif %}
+                        {% if view_only or order_form.instance.order_status != 'draft' %}disabled{% endif %}>
+                      <label for="id_is_direct_to_warehouse" class="form-check-label">Already received in warehouse</label>
+                    </div>
+                    {% if order_form.errors.is_direct_to_warehouse %}
+                      <div class="invalid-feedback d-block">{{ order_form.errors.is_direct_to_warehouse|striptags }}</div>
+                    {% endif %}
+                  </div>
+                  <div class="col-md-5 {% if not order_form.instance.is_direct_to_warehouse or order_form.instance.order_status != 'draft' %}d-none{% endif %}" id="received-by-driver-container">
+                    {{ order_form.received_by_driver|as_crispy_field }}
+                  </div>
+                </div>
+
+              </div>
+          </div>
+        </div>
+
+          <div class="col-md-6">
+            <div class="card mb-4">
+              <h5 class="card-header">Customer/Recipient</h5>
+              <div class="card-body">
+                <div class="row">
+                    <div class="col-md-10 mb-3">
+                      <label for="id_customer">Customer</label>
+                      {{ order_form.customer }}
+                    </div>
+                    {% if not view_only %}
+                      <div class="col-md-2" style="align-content:center">
+                        <div class="input-group-append input-sm">
+                          <button class="btn btn-primary"
+                            hx-get="{% url 'users:create_customer_modal' %}"
+                            hx-target="#modal-content-placeholder"
+                            hx-trigger="click"
+                            hx-swap="innerHTML"
+                            data-bs-toggle="modal"
+                            data-bs-target="#modalForm2">
+                            <i class="fa fa-plus"></i>
+                          </button>
+                        </div>
+                      </div>
+                    {% endif %}
+                </div>
+                <div class="row">
+                  <div class="col-md-10">
+                    <label for="id_customer_address">Customer Address</label>
+                    <select name="customer_address" id="id_customer_address" class="form-select" {% if view_only %}disabled{% endif %}>
+                      {% if not order_form.instance.customer_address %}
+                        <option value="">Select Customer</option>
+                      {% endif %}
+                      {% for address in customer_addresses %}
+                        {% if address.id == order_form.instance.customer_address.id %}
+                          <option value="{{ address.id }}" selected>
+                            {{ address }}
+                          </option>
+                        {% else %}
+                          <option value="{{ address.id }}">
+                            {{ address }}
+                          </option>
+                        {% endif %}
+                      {% endfor %}
+                    </select>
+                  </div>
+                  {% if not view_only %}
+                  <div class="col-md-2" style="align-content:center">
+                    <div class="input-group-append input-sm">
+                      <button class="btn btn-primary" id="add_customer_address"
+                        hx-target="#modal-content-placeholder"
+                        hx-trigger="click"
+                        hx-swap="innerHTML"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalForm2">
+                        <i class="fa fa-plus"></i>
+                      </button>
+                    </div>
+                  </div>
+                  {% endif %}
+                </div>
+                <div class="row mt-3">
+                  <div class="col-md-10">
+                    {{ order_form.delivery_warehouse|as_crispy_field }}
+                  </div>
+                </div>
+                <div class="row mt-3">
+                  <div class="col-md-10">
+                    {{ order_form.estimated_delivery_date|as_crispy_field }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {% if planned_route_str or next_expected_str %}
+        <div class="card mb-4">
+          <div class="row card-body mb-2">
+            <div class="col-6">
+              <div class="py-2 mb-0">
+                {% if planned_route_str %}
+                  <strong>Planned Route:</strong>
+                  <span>{{ planned_route_str }}</span>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="py-2 mb-0">
+                {% if next_expected_str %}
+                  <span class="mx-2">|</span>
+                  <strong>Next Destination:</strong>
+                  <span>{{ next_expected_str }}</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if order_form.instance.order_status == 'delivered' %}
+          <div class="card mb-4">
+            <h5 class="card-header">Delivery Info</h5>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-4">
+                  {{ order_form.effective_date|as_crispy_field }}
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+
+        {% if order_form.instance.is_exchanged %}
+          <div class="card mb-4">
+            <h5 class="card-header">Exchange Info</h5>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-4">
+                  <label class="form-label mb-1">Exchange order</label>
+                  {% with ex=order_form.instance.exchange_children.first %}
+                    {% if ex %}
+                      <div class="input-group">
+                        <input type="text" class="form-control" value="#{{ ex.id }} — {{ ex.tracking_number }}" readonly>
+                        <a href="{% url 'orders:order_update' order_id=ex.id %}"
+                          target="_blank"
+                          class="btn btn-outline-primary">
+                          Open
+                        </a>
+                      </div>
+                    {% else %}
+                      <input type="text" class="form-control" value="No exchange order" readonly>
+                    {% endif %}
+                  {% endwith %}
+                </div>
+                <div class="col-md-4">
+                  {{ order_form.exchange_reason|as_crispy_field }}
+                </div>
+                <div class="col-md-4">
+                  {{ order_form.exchanged_at|as_crispy_field }}
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+
+        {% if order_form.instance.is_cancelled %}
+          <div class="card mb-4">
+            <h5 class="card-header">Cancellation Info</h5>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6">
+                  {{ order_form.cancelled_by|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                  {{ order_form.cancelled_at|as_crispy_field }}
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+
+
+        <div class="card mb-4">
+          <h5 class="card-header d-flex justify-content-between align-items-center">
+            Packages
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addPackageCard()" {% if view_only %}disabled{% endif %}>+ Add Package</button>
+          </h5>
+          <div class="card-body" id="packages">
+            {{ package_formset.management_form }}
+            {% for form in package_formset %}
+            <div class="card mb-3 package-card">
+              <div class="card-body">
+                <div class="col-sm-12 col-md-6 col-lg-1 d-none" readonly name="package_id">
+                  {{ form.id }}
+                </div>
+                <div class="row">
+                  <div class="col-sm-12 col-md-6 col-lg-3">{{ form.description|as_crispy_field }}</div>
+
+                  <div class="col-sm-6 col-md-4 col-lg-3">
+                    <label for="{{ form.package_type.id_for_label }}">{{ form.package_type.label }}</label>
+                    <select name="{{ form.package_type.name }}" class="form-select package-type" {% if view_only %}disabled{% endif %}>
+                      {% if not order_form.delivery_pricelist %}
+                        <option value="">Select a pricelist first</option>
+                      {% endif %}
+                      {# Always include a blank option so deleted/NULL stays visibly empty #}
+                      <option value="" {% if not form.package_type.value %}selected{% endif %}>---------</option>
+                      {% for type in form.package_type.field.queryset %}
+                        <option value="{{ type.pk }}" data-fees="{{ type.fees }}"
+                          {% if type.pk|stringformat:"s" == form.package_type.value|stringformat:"s" %}selected{% endif %}>
+                          {{ type.package_type.name }} - {{ type.fees|floatformat:2 }}
+                        </option>
+                      {% endfor %}
+                    </select>
+                    {% if form.package_type.errors %}
+                      <div class="invalid-feedback d-block">
+                        {{ form.package_type.errors|striptags }}
+                      </div>
+                    {% endif %}
+                  </div>
+                  
+                  <div class="col-sm-6 col-md-4 col-lg-2">{{ form.package_requirment|as_crispy_field }}</div>
+                  <div class="col-sm-6 col-md-4 col-lg-2">{{ form.delivery_fees|as_crispy_field }}</div>
+                  
+                  <div class="col-sm-6 col-md-4 col-lg-2" style="align-content:center">
+                    <button type="button" onclick="removePackageCard(this)" name="remove_rows" class="btn btn-outline-danger" {% if view_only %}disabled{% endif %}><i class="fa fa-trash"></i></button>
+                  </div>
+                </div>
+              
+                <div class="d-none">{{ form.DELETE }}</div>
+                
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="card mb-4">
+          <h5 class="card-header d-flex justify-content-between align-items-center">
+            Tracking
+            {% comment %} <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteSelectedTrackings()">Delete Selected</button> {% endcomment %}
+          </h5>
+          <div class="card-body table-responsive">
+            <table class="table table-bordered" id="tracking-table">
+              <thead class="table-dark">
+                <tr>
+                  {% comment %} <th><input type="checkbox" id="select-all-trackings"></th> {% endcomment %}
+                  <th>From</th>
+                  <th>To</th>
+                  <th>Source Location</th>
+                  <th>Destination Location</th>
+                  <th>Driver</th>
+                  <th>Status</th>
+                  <th>Created At</th>
+                  <th>Done At</th>
+                </tr>
+              </thead>
+              <tbody id="tracking-body">
+                <!-- will be filled by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+
+        <div class="card mb-4">
+          <h5 class="card-header">Totals</h5>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="row">
+                  <div class="col-md-6" {% if view_only %}disabled{% endif %}>
+                    {{ order_form.currency|as_crispy_field }}
+                  </div>
+                  <div class="col-md-6">
+                    <label>Order Price</label>
+                    <input id="order-price" name="order_price" class="form-control" value="{{ order_form.instance.order_price|format_currency:order_form.instance.currency }}" {% if view_only %}readonly{% endif %}>
+                  </div>
+                  {% if not view_only and not order_form.instance.is_cancelled and not order_form.instance.order_price_secondary and not order_form.instance.currency_secondary %}
+                    <div class="col-md-4 d-flex align-items-center">
+                      <button type="button" id="add-secondary-currency-btn" class="btn" onclick="showSecondaryCurrency()" title="Add another currency">➕ Add Secondary Currency</button> 
+                    </div>
+                  {% endif %}
+                </div> <!-- row -->
+
+              </div> <!-- col-md-6 -->
+              
+              <div class="col-md-3">
+                <label>Driver Commission (USD)</label>
+                <input id="driver-commission" name="driver_commission" class="form-control" readonly value="{{ order_form.instance.driver_commission|default_if_none:0|format_currency }}">
+              </div>
+              <div class="col-md-3">
+                <label>Total Delivery Fees (USD)</label>
+                <input id="total-delivery-fees" name="total_delivery_fees" class="form-control" readonly value="{{ order_form.instance.total_delivery_fees|format_currency }}">
+              </div>
+            </div>
+
+            <div class="row mt-2 {% if not order_form.instance.order_price_secondary and not order_form.instance.currency_secondary %}d-none{% endif %}" id="secondary-currency-row">
+              <div class="col-md-3">
+                {{ order_form.currency_secondary|as_crispy_field }}
+              </div>
+              <div class="col-md-3">
+                <label>Order Price (Secondary)</label>
+                <input id="order-price-secondary" name="order_price_secondary" class="form-control" value="{% if order_form.instance.order_price_secondary %}{{ order_form.instance.order_price_secondary|format_currency:order_form.instance.currency_secondary }}{% endif %}" {% if view_only or order_form.instance.is_cancelled %}readonly{% endif %}>
+              </div>
+              <div class="col-md-2 d-flex align-items-center">
+                {% if not view_only and not order_form.instance.is_cancelled %}
+                  <button type="button" class="btn btn-outline-secondary btn-sm" onclick="cancelSecondaryCurrency()">Delete</button>
+                {% endif %}
+              </div>
+            </div> <!-- row -->
+            
+          </div>
+        </div>
+
+        {% if not view_only %}
+          <button type="button" class="btn btn-primary" onclick="submitOrder(false)">Save Order</button>
+          {% if not from_order_request and not order_id %}
+            <button type="button" class="btn btn-primary" onclick="submitOrder(true)">Save &amp; New</button>
+          {% endif %}
+          {% if from_order_request %}
+              <button type="button" class="btn btn-primary" onclick="submitOrder(false, true)">Save &amp; Next</button>
+          {% endif %}
+        {% endif %}
+
+        
+        {% if from_order_request %}
+          <a href="{% url 'orders:orders_list' %}?order_request_id={{ order_form.instance.order_request.id }}" class="btn btn-outline-secondary">Back to List</a>
+        {% else %}
+          <a href="{% url 'orders:orders_list' %}" class="btn btn-outline-secondary">Back to List</a>
+        {% endif %}
+      </form>
+    </div>
+  </section>
+</div>
+
+{% if order_form.instance.order_status not in "draft,confirmed,pending_pickup,pickup_confirmed,in_warehouse,in_warehouse_transit" %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      document.querySelector('[id="id_supplier"]').setAttribute('disabled', 'disabled');
+      document.querySelector('[id="id_customer"]').setAttribute('disabled', 'disabled');
+    });
+  </script>
+{% endif %}
+
+
+<template id="empty-package-template">
+  <div class="card mb-3 package-card">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-sm-12 col-md-6 col-lg-3">{{ package_formset.empty_form.description|as_crispy_field }}</div>
+        <div class="col-sm-6 col-md-4 col-lg-3">
+          <label for="{{ package_formset.empty_form.package_type.id_for_label }}">Package Type</label>
+          <select name="{{ package_formset.empty_form.package_type.name }}"
+                  id="{{ package_formset.empty_form.package_type.id_for_label }}"
+                  class="form-select package-type">
+            {% for type in package_formset.empty_form.package_type.field.queryset %}
+              <option value="{{ type.pk }}" data-fees="{{ type.fees }}">
+                {{ type.package_type.name }} - {{ type.fees|floatformat:2 }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-sm-6 col-md-4 col-lg-2">{{ package_formset.empty_form.package_requirment|as_crispy_field }}</div>
+        <div class="col-sm-6 col-md-4 col-lg-2">{{ package_formset.empty_form.delivery_fees|as_crispy_field }}</div>
+
+        <div class="col-sm-6 col-md-4 col-lg-2" style="align-content:center">
+          <button type="button" onclick="removePackageCard(this)" name="remove_rows" class="btn btn-outline-danger "><i class="fa fa-trash"></i></button>
+        </div>
+      </div>
+      <div class="d-none">{{ package_formset.empty_form.DELETE }}</div>
+    </div>
+  </div>
+</template>
+
+{% include 'forms/assign_driver_modal.html' %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+  {% comment %} <script src="{% static 'dist/js/inline_forms_helper.js' %}"/>  {% endcomment %}
+  <script src="{% static 'orders/js/orders_form.js' %}"></script>
+  <script src="{% static 'orders/js/common.js' %}"></script>
+
+  <script>
+      document.getElementById('packages').addEventListener('change', function () {
+        bindPackageTypeListeners();
+      });
+
+      document.getElementById('order-price').addEventListener('change', function () {
+        updateOrderTotals();
+      });
+
+      // Secondary currency handlers
+      function showSecondaryCurrency(){
+        const row = document.getElementById('secondary-currency-row');
+        if (row) row.classList.remove('d-none');
+        const addBtn = document.getElementById('add-secondary-currency-btn');
+        if (addBtn) { addBtn.classList.add('d-none'); }
+        const curr2 = document.getElementById('id_currency_secondary');
+        const price2 = document.getElementById('order-price-secondary');
+        if (curr2) curr2.setAttribute('required','required');
+        if (price2) price2.setAttribute('required','required');
+      }
+      function cancelSecondaryCurrency(){
+        const row = document.getElementById('secondary-currency-row');
+        const addBtn = document.getElementById('add-secondary-currency-btn');
+        const curr2 = document.getElementById('id_currency_secondary');
+        const price2 = document.getElementById('order-price-secondary');
+        if (curr2) { curr2.value=''; curr2.removeAttribute('required'); }
+        if (price2) { price2.value=''; price2.removeAttribute('required'); }
+        if (row) row.classList.add('d-none');
+        if (addBtn) { addBtn.classList.remove('d-none'); }
+      }
+
+      // Toggle driver selection visibility based on direct-to-warehouse flag
+      (function(){
+        const chk = document.getElementById('id_is_direct_to_warehouse');
+        const cont = document.getElementById('received-by-driver-container');
+        const drv = document.getElementById('id_received_by_driver');
+        function update(){
+          const statusEl = document.getElementById('id_order_status');
+          const isDraft = statusEl && statusEl.value === 'draft';
+          const allowed = !!(chk && isDraft); // only show when order is draft
+          const on = allowed && chk.checked;
+          if (cont) cont.classList.toggle('d-none', !on);
+          if (drv) {
+            if (on) drv.setAttribute('required','required'); else drv.removeAttribute('required');
+          }
+        }
+        if (chk) {
+          chk.addEventListener('change', update);
+          update();
+        }
+      })();
+
+  </script>
+  
+{% endblock %}

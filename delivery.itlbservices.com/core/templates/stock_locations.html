@@ -1,0 +1,151 @@
+<!-- users.html -->
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block title %}Warehouses{% endblock %}
+
+{% block extrastyle %}
+  <link rel="stylesheet" href="{% static 'vendor/datatables/css/datatables.min.css' %}">
+{% endblock extrastyle %}
+
+{% block bodyclass %} hold-transition sidebar-mini layout-fixed {% endblock bodyclass %}
+
+{% block content %}
+
+<div class="content-wrapper">
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h1>Stock Locations</h1>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+      <div class="row mb-2 align-items-center">
+        <div class="col-12 col-md-5 mb-2 mb-md-0">
+          <a href="{% url 'create_stock_location' %}" class="btn bg-primary">+ Create Location</a>
+        </div>
+        <div class="col-6 col-md-5 d-flex justify-content-md-end">
+          <div id="sl-actions" class="dropdown" style="display:none;">
+            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+              <i class="fa fa-cog"></i> Actions
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="#" id="sl-archive">Archive</a></li>
+              <li><a class="dropdown-item" href="#" id="sl-unarchive">Unarchive</a></li>
+              <li><a class="dropdown-item text-danger" href="#" id="sl-delete">Delete</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="col-6 col-md-2">
+          <select id="sl-status-filter" class="form-select">
+            <option value="1" {% if active_flag|default:1 %}selected{% endif %}>Active</option>
+            <option value="0" {% if not active_flag %}selected{% endif %}>Archived</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table id="stockLocationsTable" class="table table-striped dtr-inline collapsed" style="width:100%">
+          <thead class="table-dark">
+            <tr>
+              <th style="width:30px;"><input type="checkbox" id="select-all-sl" /></th>
+              <th>Name</th>
+              <th>Location Type</th>
+              <th>Warehouse</th>
+            </tr>
+          </thead>
+          <tbody id="stock-locations-body" hx-get="{% url 'stock_locations' %}" hx-swap="outerHTML" hx-trigger="from:body">
+            {% for location in stockLocations %}
+            <tr>
+              <td><input type="checkbox" class="sl-checkbox" value="{{ location.id }}" /></td>
+              <td><a href="{% url 'update_stock_location' location.pk %}">{{ location.name }}</a></td>
+              <td>{{ location.location_type }}</td>
+              <td>{{ location.warehouse|default_if_none:"" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+
+
+    </div><!-- /.container-fluid -->
+  </section>
+  <!-- /.content -->
+</div>
+
+{% endblock content %}
+
+{% block extra_scripts %}
+
+    <!-- Datatable -->
+    <script src="{% static 'vendor/datatables/js/datatables.min.js' %}"></script>
+
+    <script>
+      $(document).ready(function () {
+        $('#stockLocationsTable').DataTable({
+          paging: true,
+          lengthChange: false,
+          searching: true,
+          ordering: true,
+          info: true,
+          autoWidth: false,
+          responsive: true,
+          columnDefs: [
+            { targets: 0, orderable: false }
+          ]
+        });
+
+        const actionBox = document.getElementById('sl-actions');
+        const selectAll = document.getElementById('select-all-sl');
+        function updateActionBox(){
+          const any = document.querySelectorAll('.sl-checkbox:checked').length > 0;
+          actionBox.style.display = any ? 'block' : 'none';
+        }
+        document.addEventListener('change', function(e){ if (e.target && e.target.classList.contains('sl-checkbox')) updateActionBox(); });
+        if (selectAll) selectAll.addEventListener('change', function(){
+          document.querySelectorAll('.sl-checkbox').forEach(cb => { cb.checked = selectAll.checked; });
+          updateActionBox();
+        });
+
+        function getSelectedIds(){ return Array.from(document.querySelectorAll('.sl-checkbox:checked')).map(cb => parseInt(cb.value)); }
+        function postJson(url, payload){ return fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json', 'X-CSRFToken': getCSRFToken() }, body: JSON.stringify(payload) }).then(r=>r.json()); }
+
+        document.getElementById('sl-archive').addEventListener('click', function(e){
+          e.preventDefault(); const ids = getSelectedIds(); if (!ids.length) return;
+          postJson('/stock-locations/archive', { ids }).then(resp => {
+            handleApiResponse(resp);
+          });
+        });
+        document.getElementById('sl-unarchive').addEventListener('click', function(e){
+          e.preventDefault(); const ids = getSelectedIds(); if (!ids.length) return;
+          postJson('/stock-locations/unarchive', { ids }).then(resp => {
+            handleApiResponse(resp);
+          });
+        });
+        document.getElementById('sl-delete').addEventListener('click', function(e){
+          e.preventDefault(); const ids = getSelectedIds(); if (!ids.length) return;
+          postJson('/stock-locations/delete', { ids }).then(resp => {
+            handleApiResponse(resp);
+          });
+        });
+
+        // Active/Archived filter
+        const statusSel = document.getElementById('sl-status-filter');
+        if (statusSel) {
+          statusSel.addEventListener('change', function(){
+            const url = new URL(window.location.href);
+            url.searchParams.set('active', this.value);
+            window.location.href = url.toString();
+          });
+        }
+      });
+
+    </script>
+
+{% endblock extra_scripts %}

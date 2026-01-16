@@ -1,0 +1,115 @@
+{% load static %}
+
+<!-- jQuery -->
+<script src="{% static 'vendor/jquery/jquery.min.js' %}"></script>
+<!-- Bootstrap 5 -->
+<script src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+<!-- AdminLTE App -->
+<script src="{% static 'adminlte/js/adminlte.min.js' %}"></script>
+<!-- HTMX -->
+<script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>
+
+<!-- SELECT2 -->
+<script src="{% static 'django_select2/django_select2.js' %}"></script>
+<script src="{% static 'vendor/select2/js/select2.full.min.js' %}"></script>
+
+<script src="{% static 'vendor/sweetalert2/sweetalert2.all.min.js' %}"></script>
+
+<script>
+  // Expose a simple role flag for front-end branching (driver OTP)
+  window.CURRENT_USER_IS_DRIVER = {% if is_driver %}true{% else %}false{% endif %};
+</script>
+
+<script>
+  // Unified API response handler
+  // - Failure: blocking error alert requiring user acknowledgement
+  // - Success:
+  //    - If there are failed items in response (failed_orders/failed):
+  //        * If onSuccessCallback provided, delegate to it (backwards compatible)
+  //        * Else show a warning listing the failures, then refresh
+  //    - If no failures: always show success toast + refresh (even if callback provided)
+  function handleApiResponse(responseJson) {
+    try {
+      if (!responseJson || responseJson.success !== true) {
+        const message = (responseJson && responseJson.error) ? responseJson.error : 'Something went wrong.';
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: message
+        });
+        return false;
+      }
+
+      // Normalize optional failures array key
+      const failures = (Array.isArray(responseJson.failed_orders) && responseJson.failed_orders)
+        || (Array.isArray(responseJson.failed) && responseJson.failed)
+        || null;
+
+      // If failures exist but no callback, show a warning and then refresh
+      if (failures && failures.length > 0) {
+        const html = failures.map(f => {
+          const id = (f.order_id !== undefined ? f.order_id : (f.id !== undefined ? f.id : ''));
+          const reason = f.reason || f.error || 'Failed';
+          return (id !== '' ? `Order ${id}: ${reason}` : `${reason}`);
+        }).join('<br>');
+        Swal.fire({ icon: 'warning', title: 'Some Items Failed', html });
+        return true;
+      }
+
+      // No failures: show success toast after reload (even if callback provided)
+      const toastPayload = {
+        title: responseJson.message || 'Action completed successfully',
+        icon: 'success',
+        timer: 7000,
+        ts: Date.now()
+      };
+      try { sessionStorage.setItem('pendingToast', JSON.stringify(toastPayload)); } catch (e) {}
+      window.location.reload();
+
+      return true;
+    } catch (err) {
+      // If anything unexpected happens, show a blocking error to be safe
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Unexpected error occurred.' });
+      return false;
+    }
+  }
+</script>
+
+<script>
+  // On load: show any pending toast saved before reload
+  (function showPendingToast() {
+    try {
+      const raw = sessionStorage.getItem('pendingToast');
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      // Basic validation and 15s staleness guard
+      if (!data || !data.title) { sessionStorage.removeItem('pendingToast'); return; }
+      if (data.ts && (Date.now() - data.ts) > 15000) { sessionStorage.removeItem('pendingToast'); return; }
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: data.icon || 'success',
+        title: data.title,
+        background: '#198754',
+        color: '#ffffff',
+        iconColor: '#ffffff',
+        showConfirmButton: false,
+        timer: data.timer || 7000,
+        timerProgressBar: true,
+        didOpen: (toast) => {
+          toast.addEventListener('mouseenter', Swal.stopTimer)
+          toast.addEventListener('mouseleave', Swal.resumeTimer)
+        }
+      });
+      sessionStorage.removeItem('pendingToast');
+    } catch (e) { /* noop */ }
+  })();
+  </script>
+
+<script>
+  // Minimal global helper for CSRF from cookie
+  function getCSRFToken() {
+    const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
+    return cookie ? decodeURIComponent(cookie.split('=')[1]) : '';
+  }
+</script>

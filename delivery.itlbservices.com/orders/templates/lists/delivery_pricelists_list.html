@@ -1,0 +1,90 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block title %}Delivery Pricelists{% endblock %}
+
+{% block extrastyle %}
+  <link rel="stylesheet" href="{% static 'vendor/datatables/css/datatables.min.css' %}">
+{% endblock extrastyle %}
+
+{% block bodyclass %} hold-transition sidebar-mini layout-fixed {% endblock bodyclass %}
+
+{% block content %}
+
+<div class="content-wrapper">
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-sm-6">
+          <h4>Delivery Pricelists</h4>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-md-2 col-sm-6 mb-3">
+          <a href="{% url 'orders:delivery_pricelist_create' %}" class="btn bg-primary">
+              + Create New Pricelist
+          </a>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table id="pricelistsTable" class="table table-striped dtr-inline collapsed" style="width:100%">
+          <thead class="table-dark">
+            <tr>
+              <th>Name</th>
+              <th>Default</th>
+              <th>Items Count</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for pricelist in pricelists %}
+            <tr>
+              <td>
+                <a href="{% url 'orders:delivery_pricelist_update' pricelist.pk %}" class="text-decoration-none">
+                  {{ pricelist.name }}
+                </a>
+              </td>
+              <td>
+                {% if pricelist.default %}
+                  <span class="badge bg-success">Yes</span>
+                {% else %}
+                  <span class="badge bg-secondary">No</span>
+                {% endif %}
+              </td>
+              <td>{{ pricelist.pricelist_items.count }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    </div><!-- /.container-fluid -->
+  </section>
+  <!-- /.content -->
+</div>
+
+{% endblock content %}
+
+{% block extra_scripts %}
+  <!-- Datatable -->
+  <script src="{% static 'vendor/datatables/js/datatables.min.js' %}"></script>
+
+  <script>
+    $(document).ready(function () {
+      $('#pricelistsTable').DataTable({
+        "responsive": true,
+        "lengthChange": false,
+        "autoWidth": false,
+        "searching": true,
+        "ordering": true,
+        "info": true,
+        "paging": true,
+      });
+    });
+  </script>
+{% endblock extra_scripts %}

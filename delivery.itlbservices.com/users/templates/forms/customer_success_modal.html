@@ -1,0 +1,27 @@
+<script>
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('modalForm2'));
+    modal.hide();
+  
+    // Add new customer to the customer select (Select2 label uses name [phone])
+    const customerSelect = document.getElementById('id_customer');
+    const customerLabel = "{{ customer.name }} [{{ customer.phone_number }}]";
+    if (window.jQuery && $(customerSelect).hasClass('select2-hidden-accessible')) {
+      const opt = new Option(customerLabel, "{{ customer.id }}", true, true);
+      $(customerSelect).append(opt).trigger('change');
+    } else {
+      const newOption = new Option(customerLabel, "{{ customer.id }}", true, true);
+      customerSelect.appendChild(newOption);
+      customerSelect.value = "{{ customer.id }}";
+      customerSelect.dispatchEvent(new Event('change'));
+    }
+  
+    // Add new address to the supplier_address select
+    const addressSelect = document.getElementById('id_customer_address');
+    const addr = "{{ address.city }}, {{ address.street }} {{ address.building }}";
+    const newAddressOption = new Option(addr, "{{ address.id }}", true, true);
+    addressSelect.appendChild(newAddressOption);
+    addressSelect.value = "{{ address.id }}";
+    addressSelect.dispatchEvent(new Event('change'));
+</script>
+  

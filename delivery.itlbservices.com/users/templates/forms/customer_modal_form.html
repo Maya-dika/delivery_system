@@ -1,0 +1,89 @@
+<form method="post" hx-post="{% url 'users:create_customer_modal' %}" hx-target="#modal-content-placeholder" hx-swap="innerHTML">
+    {% csrf_token %}
+    <div class="modal-header">
+      <h5 class="modal-title">Create Customer</h5>
+      <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+        <span aria-hidden="true">×</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      {% if error %}
+        <div class="alert alert-danger" role="alert">{{ error }}</div>
+      {% endif %}
+      <div class="row">
+        <div class="col-md-6">
+          <label for="name">Name</label>
+          <input class="form-control" id="customer-name" name="name" value="{{ form_data.name|default:'' }}" required>
+        </div>
+        <div class="col-md-6">
+          <label for="email">Email</label>
+          <input class="form-control" id="customer-email" name="email" value="{{ form_data.email|default:'' }}">
+        </div>
+      </div>
+      <div class="row mt-2">
+        <div class="col-md-6">
+          <label for="phone">Phone</label>
+          <input class="form-control" id="customer-phone" name="phone_number" value="{{ form_data.phone_number|default:'' }}" required>
+        </div>
+      </div>
+
+      <hr/>
+      <h6>
+        <div class="custom-control custom-switch">
+          <input type="checkbox" class="custom-control-input" id="toggle-user" name="create_user" {% if form_data.create_user %}checked{% endif %}
+             hx-on:change="document.getElementById('customer-user').classList.toggle('d-none', !this.checked)">
+          <label class="custom-control-label" for="toggle-user">Register a user account for this customer</label>
+        </div>
+      </h6>
+      <div class="row {% if not form_data.create_user %}d-none{% endif %}" id="customer-user">
+          <div class="col-md-6">
+            <label for="domain">Username</label>
+            <input class="form-control" id="customer-username" name="username" value="{{ form_data.username|default:'' }}">
+          </div>
+          <div class="col-md-6">
+            <label for="domain">Password</label>
+            <input class="form-control" id="customer-password" name="password">
+          </div>
+      </div>
+
+      <hr/>
+      <label>
+        Address
+      </label>
+      <div class="row">
+        <div class="col-md-6">
+          <label for="customer-country">Country</label>
+          <select id="customer-country" name="country" class="form-select" required>
+            <option value="">-- Select Country --</option>
+            {% for code, name in countries %}
+              <option value="{{ code }}" {% if form_data.country == code %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label for="address-city">City</label>
+          <input class="form-control" id="address-city" name="city" value="{{ form_data.city|default:'' }}">
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-6">
+          <label for="address-street">Street</label>
+          <input class="form-control" id="address-street" name="street" value="{{ form_data.street|default:'' }}">
+        </div>
+        <div class="col-md-3">
+          <label for="address-building">Building</label>
+          <input class="form-control" id="address-building" name="building" value="{{ form_data.building|default:'' }}">
+        </div>
+        <div class="col-md-3">
+          <label for="address-zip_code">Zip Code</label>
+          <input class="form-control" id="address-zip_code" name="zip_code" value="{{ form_data.zip_code|default:'' }}">
+        </div>
+      </div>
+
+      <hr/>
+
+    </div>
+    <div class="modal-footer">
+      <button type="submit" class="btn btn-success">Save</button>
+    </div>
+</form>

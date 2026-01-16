@@ -1,0 +1,58 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  {# Dynamic favicon from company logo #}
+  {% with company=company_profile %}
+      {% if company and company.logo %}
+          <link rel="icon" type="image/png" href="{{ company.logo.url }}" sizes="16x16">
+      {% endif %}
+  {% endwith %}
+
+  <title> {% block title %}{% endblock title %}</title>
+
+  <!-- Google Font: Source Sans Pro -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+  <!-- Theme style -->
+  <link rel="stylesheet" href="{% static 'adminlte/css/adminlte.min.css' %}">
+   <!-- overlayScrollbars -->
+  <link rel="stylesheet" href="{% static 'overlayScrollbars/css/OverlayScrollbars.min.css' %}">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="{% static 'vendor/fontawesome-free/css/all.min.css' %}">
+
+  <!-- SELECT2 -->
+  <link href="{% static 'django_select2/django_select2.css' %}" rel="stylesheet">
+  <link href="{% static 'vendor/select2/css/select2.min.css' %}" rel="stylesheet">
+  
+  <link href="{% static 'dist/css/style.css' %}" rel="stylesheet">
+
+  {% block extrastyle %}{% endblock extrastyle %}
+</head>
+
+<body class="{% block bodyclass %}{% endblock bodyclass %}">
+
+  <div class="wrapper">
+
+    {% block header %}
+      {% include 'includes/navigation.html' %}
+    {% endblock header %}
+
+    {% block sidebar %}
+      {% include 'includes/sidebar.html' %}
+    {% endblock sidebar %}
+    
+    {% block content %}{% endblock content %}
+
+  </div>
+
+  {% include 'includes/scripts.html' %}
+  {% include 'layouts/modal.html' %}
+
+  {% block extra_scripts %}
+  {% endblock extra_scripts %}
+
+</body>
+</html>

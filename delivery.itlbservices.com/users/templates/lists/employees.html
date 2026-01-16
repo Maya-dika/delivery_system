@@ -1,0 +1,99 @@
+<!-- users.html -->
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block title %}Employees{% endblock %}
+
+{% block extrastyle %}
+  <link rel="stylesheet" href="{% static 'vendor/datatables/css/datatables.min.css' %}">
+{% endblock extrastyle %}
+
+{% block bodyclass %} hold-transition sidebar-mini layout-fixed {% endblock bodyclass %}
+
+{% block content %}
+
+<div class="content-wrapper">
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h4>Employees</h4>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+      <a href="{% url 'users:save_employee' 0 %}" class="btn btn-primary"> + Create Employee</a>
+
+
+      <div class="table-responsive">
+        <table id="employeesTable" class="table table-striped dtr-inline collapsed" style="width:100%">
+          <thead class="table-dark">
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone Number</th>
+              <th>Employee Type</th>
+              <th>Manager</th>
+              <th>Warehouse</th>
+              <th>User</th>
+              <th>Active</th>
+            </tr>
+          </thead>
+          <tbody id="employees-body" hx-get="{% url 'users:employees' %}" hx-swap="outerHTML" hx-trigger="employeesUpdated from:body">
+            {% for emp in employees %}
+            <tr>
+              <td><a href="{% url 'users:save_employee' emp.id %}">{{ emp.name }}</a></td>
+              <td>{{ emp.email|default_if_none:"" }}</td>
+              <td>{{ emp.phone_number }}</td>
+              <td>{{ emp.employee_type }}</td>
+              <td>{{ emp.manager|default_if_none:"" }}</td>
+              <td>{{ emp.warehouse|default_if_none:"" }}</td>
+              <td>{{ emp.user|default_if_none:"" }}</td>
+              <td>{{ emp.active }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+
+
+    </div><!-- /.container-fluid -->
+  </section>
+  <!-- /.content -->
+</div>
+
+{% endblock content %}
+
+{% block extra_scripts %}
+
+    <!-- Datatable -->
+    <script src="{% static 'vendor/datatables/js/datatables.min.js' %}"></script>
+
+    <script>
+
+      $(document).ready(function () {
+        $('#employeesTable').DataTable({
+          "paging": true,
+          "lengthChange": false,
+          "searching": true,
+          "ordering": true,
+          "info": true,
+          "autoWidth": false,
+          "responsive": true,
+        });
+      });
+
+      document.body.addEventListener('employeesUpdated', function (evt) {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalForm'));
+        if (modal) modal.hide();
+        
+        location.reload();
+      });
+
+    </script>
+
+{% endblock extra_scripts %}

@@ -1,0 +1,113 @@
+{% extends 'layouts/base.html' %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block title %} Order Request {{ form.instance.reference }} {% endblock %}
+{% block bodyclass %}hold-transition sidebar-mini layout-fixed{% endblock %}
+
+{% block content %}
+<div class="content-wrapper" id="order-request-page">
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h1>{{ instance.reference|default_if_none:"New Order Request" }} </h1>
+        </div>
+        <div class="col-sm-6">
+          <div class="d-flex justify-content-end align-items-center" style="gap:12px;">
+            <div class="dropdown">
+            <a href="{% url 'orders:orders_list' %}?order_request_id={{ instance.id }}" ><i class="fas fa-cubes"></i>View Orders</a>
+            <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+              Actions
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" onclick="confirmOrderRequests([{{ instance.id }}])">Confirm Request</a></li>
+              <li>
+                <button class="dropdown-item" type="button" id="cancel-request-btn">
+                  Cancel Request
+                </button>
+              </li>
+            </ul>
+            </div>
+            <span id="req-pager" class="d-none align-items-center" style="gap:8px; font-weight:500;">
+              <span id="req-pager-counter">1 / 1</span>
+              <div class="btn-group btn-group-sm" role="group" aria-label="Request navigation">
+                <button type="button" class="btn btn-outline-secondary" id="req-pager-prev" title="Previous">
+                  <i class="fa fa-chevron-left"></i>
+                </button>
+                <button type="button" class="btn btn-outline-secondary" id="req-pager-next" title="Next">
+                  <i class="fa fa-chevron-right"></i>
+                </button>
+              </div>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content mt-4">
+    <div class="container-fluid">
+      <form id="order-request-form">
+        <input type="hidden" name="order_request_id" id="order-request-id" value="{{ instance.id }}">
+        {% csrf_token %}
+        <div class="card mb-4">
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-3 col-sm-6">
+                <label for="id_supplier">Merchant</label>
+                {{ form.supplier }}
+              </div>
+              <div class="col-md-3 col-sm-6">
+                {{ form.warehouse|as_crispy_field }}
+              </div>
+              <div class="col-md-3 col-sm-6">
+                {{ form.driver|as_crispy_field }}
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-3 col-sm-6">
+                {{ form.nb_orders|as_crispy_field }}
+              </div>
+              <div class="col-md-3 col-sm-6">
+                {{ form.nb_packages|as_crispy_field }}
+              </div>
+              <div class="col-md-3 col-sm-6">
+                {{ form.total_amount|as_crispy_field }}
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-3 col-sm-6">
+                {{ form.status|as_crispy_field }}
+              </div>
+              <div class="col-md-3 col-sm-6">
+                {{ form.created_by|as_crispy_field }}
+              </div>
+              <div class="col-md-3 col-sm-6">
+                {{ form.created_at|as_crispy_field }}
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-3 col-sm-6">
+                {{ form.delivery_pricelist|as_crispy_field }}
+              </div>
+            </div>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a href="{% url 'orders:order_request_list' %}" class="btn btn-outline-secondary">Back to List</a>
+      </form>
+    </div>
+  </section>
+</div>
+
+
+{% include 'forms/assign_driver_modal.html' %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+  <script src="{% static 'orders/js/order_request.js' %}"></script>
+
+  
+{% endblock %}

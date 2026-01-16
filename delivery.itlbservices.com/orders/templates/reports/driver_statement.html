@@ -1,0 +1,95 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block title %}Driver Statement{% endblock %}
+{% block bodyclass %}hold-transition sidebar-mini layout-fixed{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-md-3 col-sm-6"><h4>Driver Statement</h4></div>
+        <div class="col-md-2 col-sm-6">
+          <div class="dropdown w-100">
+          <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" data-bs-toggle="dropdown">Date Range</button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="#" data-preset="today">Today</a></li>
+            <li><a class="dropdown-item" href="#" data-preset="last7">Last 7 days</a></li>
+            <li><a class="dropdown-item" href="#" data-preset="thisMonth">This month</a></li>
+            <li><a class="dropdown-item" href="#" data-preset="lastMonth">Last month</a></li>
+          </ul>
+          </div>
+        </div>
+        <div class="col-md-2 col-sm-3"><input type="date" id="ds-from" class="form-control" /></div>
+        <div class="col-md-2 col-sm-3"><input type="date" id="ds-to" class="form-control" /></div>
+        <div class="col-md-2 col-sm-3">
+          <select id="ds-driver" class="form-select">
+          <option value="">Select Driver</option>
+          {% for d in drivers %}
+            <option value="{{ d.id }}">{{ d.name }}</option>
+          {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-1 col-sm-3"><button class="btn btn-outline-primary w-100" id="ds-print" type="button">Print</button></div>
+      </div>
+      <div class="row mb-2">
+        <div class="col-12">
+          <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#ds-extra" aria-expanded="false">Extra Filters</button>
+        </div>
+      </div>
+      <div class="collapse" id="ds-extra">
+        <div class="card card-body">
+          <div class="row" style="gap:8px;">
+            <div class="col-md-3">
+              <label class="form-label">Delivery Fees =</label>
+              <input type="number" step="0.01" id="ds-delivery-fees" class="form-control" placeholder="e.g. 4.00" />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Driver Commission =</label>
+              <input type="number" step="0.01" id="ds-driver-commission" class="form-control" placeholder="e.g. 1.50" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+      <div class="card">
+        <div class="card-body">
+          <div class="table-responsive">
+            <table id="dsTable" class="table table-striped" style="width:100%">
+              <thead class="table-dark">
+                <tr>
+                  <th>Date</th>
+                  <th>Orders</th>
+                  <th>Total Fees</th>
+                  <th>Total Commission</th>
+                  <th>Total Profit</th>
+                </tr>
+              </thead>
+              <tfoot>
+                <tr>
+                  <th class="text-end">Totals:</th>
+                  <th id="ds-ft-orders"></th>
+                  <th id="ds-ft-fees"></th>
+                  <th id="ds-ft-commission"></th>
+                  <th id="ds-ft-profit"></th>
+                </tr>
+              </tfoot>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+  <script src="{% static 'vendor/datatables/js/datatables.min.js' %}"></script>
+  <script src="{% static 'orders/js/driver_statement.js' %}"></script>
+{% endblock %}

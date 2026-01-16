@@ -1,0 +1,209 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ form_title }} Customer{% endblock %}
+{% block bodyclass %} hold-transition sidebar-mini layout-fixed {% endblock bodyclass %}
+
+
+{% block content %}
+<div class="content-wrapper">
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h4>{{ form_title }} Customer</h4>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+  <form method="post">
+    {% csrf_token %}
+    {{ address_formset.management_form }}
+
+    <div class="card mb-4">
+      <h5 class="card-header">Customer Details</h5>
+      <div class="card-body">
+        <div class="card">
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6">
+                {{ customer_form.name|as_crispy_field }}
+              </div>
+              <div class="col-md-6">
+                {{ customer_form.email|as_crispy_field }}
+              </div>
+            </div>
+          
+            <div class="row">
+              <div class="col-md-6">
+                {{ customer_form.phone_number|as_crispy_field }}
+              </div>
+              <div class="col-md-6">
+                {{ customer_form.company|as_crispy_field }}
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6">
+                {{ customer_form.active|as_crispy_field }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+        <h5 class="card-header d-flex justify-content-between align-items-center">
+          {% if user_has_account %}
+          User Account
+        {% else %}
+          <input type="hidden" name="create_user" id="create-user-flag" value="{{ user_has_account|yesno:'1,0' }}">
+
+          <div class="custom-control custom-switch">
+            <input type="checkbox" class="custom-control-input" id="create-user-toggle">
+            <label class="custom-control-label" for="create-user-toggle">Register a user account for this customer</label>
+          </div>
+        {% endif %}
+        </h5>
+        <div class="card-body {% if not user_has_account %} d-none {% endif %}" id="user-form">
+          <div class="card">
+            <div class="card-body">
+              {% if user_form %}
+              <div class="row">
+                <div class="col-md-4">
+                  {{ user_form.username|as_crispy_field }}
+                </div>
+                <div class="col-md-4">
+                  {{ user_form.password|as_crispy_field }}
+                </div>
+                <div class="col-md-4">
+                  {{ user_form.is_active|as_crispy_field }}
+                </div>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+      <h5 class="card-header d-flex justify-content-between align-items-center">
+        <span>Addresses</span>
+        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addAddressCard()">+ Add Address</button>
+      </h5>
+      <div class="card-body" id="addresses">
+        {% for form in address_formset.forms %}
+          <div class="card mb-3 address-card">
+            <div class="card-body">
+              {{ form.id }}
+              <div class="d-none">
+                {{ form.DELETE }}
+              </div>   
+              <div class="row">
+                <div class="col-md-6">{{ form.country|as_crispy_field }}</div>
+                <div class="col-md-6">{{ form.city|as_crispy_field }}</div>
+              </div>
+              <div class="row">
+                <div class="col-md-3">{{ form.street|as_crispy_field }}</div>
+                <div class="col-md-3">{{ form.building|as_crispy_field }}</div>
+                <div class="col-md-3">{{ form.zip_code|as_crispy_field }}</div>
+                <div class="col-md-3 d-flex align-items-center">
+                  <button type="button" class="btn btn-sm btn-danger remove-address-btn" onclick="removeAddressCard(this)">Delete Address</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% empty %}
+          <p>No addresses added yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save Customer</button>
+    <a href="{% url 'users:customers' %}" class="btn btn-outline-secondary">Back to List</a>
+  </form> 
+
+</div><!-- /.container-fluid -->
+</section>
+<!-- /.content -->
+</div>
+
+<!-- Hidden template for cloning new address forms -->
+<template id="empty-form-template">
+  <div class="card mb-3 address-card">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">{{ address_formset.empty_form.country|as_crispy_field }}</div>
+        <div class="col-md-6">{{ address_formset.empty_form.city|as_crispy_field }}</div>
+      </div>
+      <div class="row">
+        <div class="col-md-6">{{ address_formset.empty_form.street|as_crispy_field }}</div>
+        <div class="col-md-4">{{ address_formset.empty_form.building|as_crispy_field }}</div>
+        <div class="col-md-4">{{ address_formset.empty_form.zip_code|as_crispy_field }}</div>
+        <div class="col-md-2 d-flex align-items-center">
+          <button type="button" class="btn btn-sm btn-danger" onclick="removeAddressCard(this)">Delete Address</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+{% endblock %}
+
+{% block extra_scripts %}
+
+    <script>
+
+      function removeAddressCard(btn) {
+        const card = btn.closest('.address-card');
+        if (!card) return;
+
+        card.remove();
+
+        // Update TOTAL_FORMS count manually if needed
+        const totalFormsInput = document.getElementById('id_form-TOTAL_FORMS');
+        const cards = document.querySelectorAll('.address-card').length;
+        totalFormsInput.value = cards;
+      }
+      
+      function addAddressCard() {
+        const totalFormsInput = document.getElementById('id_form-TOTAL_FORMS');
+        let formIndex = parseInt(totalFormsInput.value);
+      
+        const template = document.getElementById('empty-form-template')
+          .innerHTML.replace(/__prefix__/g, formIndex);
+      
+        document.getElementById('addresses').insertAdjacentHTML('beforeend', template);
+      
+        // ✅ Increment the value so Django expects this new form
+        totalFormsInput.value = formIndex + 1;
+      } 
+      
+      document.addEventListener('DOMContentLoaded', function () {
+        const checkbox = document.getElementById('create-user-toggle');
+        const userFormCard = document.getElementById('user-form');
+        const createUserFlag = document.getElementById('create-user-flag');
+        const usernameField = document.getElementById('id_username');
+    
+        function updateUserFormVisibility() {
+          if (checkbox) {
+            const show = checkbox.checked;
+            userFormCard.classList.toggle('d-none', !show);
+            createUserFlag.value = show ? '1' : '0';
+    
+            usernameField.required = show;
+          }
+        }
+    
+        if (checkbox) {
+          checkbox.addEventListener('change', updateUserFormVisibility);
+        }
+        updateUserFormVisibility(); // Run once on load
+      });
+
+    </script>
+
+{% endblock extra_scripts %}

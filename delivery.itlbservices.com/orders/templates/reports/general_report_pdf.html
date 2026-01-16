@@ -1,0 +1,84 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    @page { size: A4; margin: 8mm; }
+
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #222; margin: 0; }
+    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 6px; margin-bottom: 10px; }
+    .header .left { display: flex; align-items: center; gap: 10px; }
+    .header img { height: 40px; }
+    .title { font-size: 16px; font-weight: 700; }
+    .filters { margin: 6px 0 10px 0; font-weight: 500; }
+    .filters span { margin-right: 12px; }
+    table { width: 100%; }
+    th, td { padding: 5px 6px; border-bottom: 1px solid #eee; word-wrap: break-word; }
+    thead th { background: #f2f2f2; font-weight: 700; }
+    tfoot td { font-weight: 700; border-top: 1px solid #ccc; }
+  </style>
+  <title>General Report</title>
+  </head>
+  <body>
+    <div class="header">
+      <div class="left">
+        {% if company and company.logo %}
+          <img src="{{ company.logo.url }}" alt="Company Logo" />
+        {% endif %}
+        <div class="title">General Report</div>
+      </div>
+      <div class="right">
+        Printed at: {{ printed_at|date:"Y-m-d H:i" }}
+      </div>
+    </div>
+
+    {% if applied_filters %}
+      <div class="filters">
+        {% for f in applied_filters %}
+          <span>{{ f }}</span></br>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <table>
+      <thead>
+        <tr>
+          <th >Date</th>
+          <th>Tracking</th>
+          <th>Supplier</th>
+          <th >Invoice Status</th>
+          <th >Payment Method</th>
+          <th >Order Price</th>
+          <th >Fees</th>
+          <th >Commission</th>
+          <th >Profit</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+          <tr>
+            <td>{{ r.date }}</td>
+            <td>{{ r.tracking_number }}</td>
+            <td>{{ r.supplier }}</td>
+            <td>{{ r.invoice_status }}</td>
+            <td>{{ r.payment_method }}</td>
+            <td>{{ r.order_price }}</td>
+            <td>{{ r.total_delivery_fees }}</td>
+            <td>{{ r.driver_commission }}</td>
+            <td>{{ r.profit }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="6" style="text-align:right">Totals:</td>
+          {% comment %} <td>{{ totals.total_amount|floatformat:2 }}</td> {% endcomment %}
+          <td>{{ totals.total_delivery_fees }}</td>
+          <td>{{ totals.driver_commission }}</td>
+          <td>{{ totals.profit }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </body>
+  </html>

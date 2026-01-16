@@ -1,0 +1,78 @@
+<div class="modal fade" id="assignDriverModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" id="driver-modal-content-placeholder">
+            <!-- Content is loaded via HTMX -->
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="confirmOrderDelivery" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title">Confirm Delivery</h5>
+            <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            Are you sure you want to mark selected orders as "Delivered"?
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" id="confirmOrderDeliveryBtn">Yes, Confirm</button>
+        </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="sendToNextWarehouseModal" tabindex="-1" aria-labelledby="sendToNextWarehouseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" id="next-warehouse-modal-content-placeholder">
+        <!-- Content will be dynamically loaded here via HTMX -->
+        </div>
+    </div>
+</div>
+
+<!-- Return Order Modal -->
+<div class="modal fade" id="returnOrderModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="returnOrderModalTitle">Return Order</h5>
+        <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="return-order-form">
+          <input type="hidden" id="return_order_mode" value="cancel" />
+          <input type="hidden" id="return_order_id" value="{{ order_id }}" />
+          <div class="mb-3">
+            <label for="return_from_warehouse" class="form-label">Return From Warehouse</label>
+            <select id="return_from_warehouse" class="form-select">
+              <option value="">Select Warehouse</option>
+              {% for wh in warehouses %}
+                <option value="{{ wh.id }}">{{ wh.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="return_driver" class="form-label">Driver</label>
+            <select id="return_driver" class="form-select">
+              <option value="">Select Driver</option>
+              {% for drv in drivers %}
+                <option value="{{ drv.id }}">{{ drv }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmReturnOrderBtn">Submit</button>
+      </div>
+    </div>
+  </div>
+</div>

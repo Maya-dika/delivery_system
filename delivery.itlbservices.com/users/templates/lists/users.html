@@ -1,0 +1,92 @@
+<!-- users.html -->
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block title %}System Users{% endblock %}
+
+{% block extrastyle %}
+  <link rel="stylesheet" href="{% static 'vendor/datatables/css/datatables.min.css' %}">
+  {% comment %} <link rel="stylesheet" href="{% static 'vendor/datatables-responsive/css/responsive.bootstrap4.min.css' %}"> {% endcomment %}
+{% endblock extrastyle %}
+
+{% block bodyclass %} hold-transition sidebar-mini layout-fixed {% endblock bodyclass %}
+
+{% block content %}
+
+<div class="content-wrapper">
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h4>System Users</h4>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+      <!-- Add Button -->
+      <a href="{% url 'users:save_user' 0 %}" class="btn btn-primary"> + Create User</a>
+
+      <div class="table-responsive">
+        <table id="usersTable" class="table table-striped dtr-inline collapsed" style="width:100%">
+          <thead class="table-dark">
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone Number</th>
+              <th>Username</th>
+              <th>User Type</th>
+              <td>Active</td>
+            </tr>
+          </thead>
+          <tbody id="users-body" 
+            hx-get="{% url 'users:users' %}" 
+            hx-swap="outerHTML" 
+            hx-trigger="from:body">
+            {% for user in users %}
+            <tr>
+              <td><a href="{% url 'users:save_user' user.id  %}">{{ user.full_name }}</a></td>
+              <td>{{ user.email }}</td>
+              <td>{{ user.phone_number }}</td>
+              <td>{{ user.username }}</td>
+              <td>{{ user.user_type }}</td>
+              <td>{{ user.is_active }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+
+
+    </div><!-- /.container-fluid -->
+  </section>
+  <!-- /.content -->
+</div>
+
+{% endblock content %}
+
+{% block extra_scripts %}
+
+    <!-- Datatable -->
+    <script src="{% static 'vendor/datatables/js/datatables.min.js' %}"></script>
+
+    <script>
+
+      $(document).ready(function () {
+        $('#usersTable').DataTable({
+          "paging": true,
+          "lengthChange": false,
+          "searching": true,
+          "ordering": true,
+          "info": true,
+          "autoWidth": false,
+          "responsive": true,
+        });
+      });
+
+    </script>
+
+{% endblock extra_scripts %}

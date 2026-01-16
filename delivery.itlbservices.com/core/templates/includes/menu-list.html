@@ -1,0 +1,15 @@
+{% load i18n static %}
+
+<ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+
+    {% for item in menus %}
+      <li class="nav-item">
+        <a href="{{ item.url }}" class="nav-link">
+          <i class="nav-icon fas {{ item.icon }}"></i> 
+          <p>
+            {{ item.name }}
+          </p>
+        </a></li>
+    {% endfor %}
+    
+</ul>
