@@ -25,10 +25,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadCurrentUrl() async {
-    final currentUrl = await StorageService.getApiBaseUrl();
-    setState(() {
-      _urlController.text = currentUrl;
-    });
+    try {
+      final currentUrl = await StorageService.getApiBaseUrl();
+      if (mounted) {
+        setState(() {
+          _urlController.text = currentUrl;
+        });
+      }
+    } catch (e) {
+      // If loading fails, use default URL
+      if (mounted) {
+        setState(() {
+          _urlController.text = Constants.defaultApiBaseUrl;
+        });
+      }
+    }
   }
 
   @override

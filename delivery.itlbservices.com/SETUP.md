@@ -1,42 +1,78 @@
 # Quick Setup Guide
 
+## Prerequisites
+
+- Python 3.8+ installed
+- MySQL server running (XAMPP, WAMP, or standalone MySQL)
+- Virtual environment created and activated
+
 ## First Time Setup
 
-1. **Make sure MySQL is running:**
-   ```bash
-   mysql -u root -proot -e "SELECT 1;"
-   ```
+### 1. Configure Environment Variables
 
-2. **Create the database:**
-   ```bash
-   mysql -u root -proot -e "CREATE DATABASE IF NOT EXISTS delivery CHARACTER SET UTF8MB4 COLLATE utf8mb4_unicode_ci;"
-   ```
+A `.env` file has been created with default settings. Update it if needed:
+- `MYSQL_DATABASE=delivery_db` (database name)
+- `MYSQL_USER=root` (your MySQL username)
+- `MYSQL_PASSWORD=` (your MySQL password - leave empty if no password)
+- `MYSQL_HOST=127.0.0.1` (localhost)
+- `MYSQL_PORT=3306` (default MySQL port)
 
-3. **Activate virtual environment:**
-   ```bash
-   source venv/bin/activate
-   ```
+### 2. Create the Database
 
-4. **Run migrations:**
-   ```bash
-   python manage.py migrate
-   ```
+**Windows (Command Prompt or PowerShell):**
+```bash
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS delivery_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+```
 
-5. **Create cache tables:**
-   ```bash
-   python manage.py createcachetable default_cache_table
-   python manage.py createcachetable select2_cache_table
-   ```
+**Or using phpMyAdmin:**
+- Open phpMyAdmin (usually at http://localhost/phpmyadmin)
+- Click "New" to create a database
+- Name it `delivery_db`
+- Select collation: `utf8mb4_unicode_ci`
+- Click "Create"
 
-6. **Seed dummy data:**
-   ```bash
-   python manage.py seed_dummy_data
-   ```
+### 3. Activate Virtual Environment
 
-7. **Collect static files:**
-   ```bash
-   python manage.py collectstatic --noinput
-   ```
+**Windows:**
+```bash
+venv_windows\Scripts\activate
+```
+
+**Linux/Mac:**
+```bash
+source venv/bin/activate
+```
+
+### 4. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 5. Run Migrations
+
+```bash
+python manage.py migrate
+```
+
+### 6. Create Cache Tables
+
+```bash
+python manage.py createcachetable default_cache_table
+python manage.py createcachetable select2_cache_table
+```
+
+### 7. Seed Dummy Data (Optional)
+
+```bash
+python manage.py seed_dummy_data
+```
+
+### 8. Collect Static Files
+
+```bash
+python manage.py collectstatic --noinput
+```
 
 ## Default Login Credentials (After Seeding)
 
@@ -49,6 +85,14 @@
 
 ## Running the Server
 
+**Windows:**
+```bash
+# Make sure virtual environment is activated
+venv_windows\Scripts\activate
+python manage.py runserver
+```
+
+**Linux/Mac:**
 ```bash
 ./start.sh
 ```
@@ -56,7 +100,14 @@
 Or manually:
 ```bash
 source venv/bin/activate
-python manage.py runserver 7001
+python manage.py runserver
+```
+
+The server will run on `http://127.0.0.1:8000/` by default.
+
+To run on a specific port:
+```bash
+python manage.py runserver 8000
 ```
 
 ## Stopping the Server

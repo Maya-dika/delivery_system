@@ -238,3 +238,9 @@ stdout.log
 .env.*.local
 .env.production
 .env.staging
+
+# Ignore actual Django settings with secrets
+config/settings.py
+
+# Keep template for reference
+!config/settings_template.py

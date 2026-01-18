@@ -27,11 +27,12 @@ if env_path.exists():
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'unsafe-secret-key')
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-local-dev-key-change-in-production')
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DJANGO_DEBUG', '') == '1'
+DEBUG = os.getenv('DJANGO_DEBUG', '1') == '1'  # Default to True for local development
 
-ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+# ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -117,46 +118,45 @@ if USE_SQLITE:
         }
     }
 else:
-    # MAMP MySQL configuration
-    mamp_socket = '/Applications/MAMP/tmp/mysql/mysql.sock'
-    mysql_host = os.getenv('MYSQL_HOST', '')
+    # MySQL/MariaDB configuration for local development
+    # Defaults to localhost MySQL (works with XAMPP, WAMP, or standalone MySQL)
+    mysql_host = os.getenv('MYSQL_HOST', '127.0.0.1')
+    mysql_port = os.getenv('MYSQL_PORT', '3306')
     
     db_config = {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.getenv('MYSQL_DATABASE', 'delivery'),
+        'NAME': os.getenv('MYSQL_DATABASE', 'delivery_db'),
         'USER': os.getenv('MYSQL_USER', 'root'),
-        'PASSWORD': os.getenv('MYSQL_PASSWORD', 'root'),
+        'PASSWORD': os.getenv('MYSQL_PASSWORD', ''),
+        'HOST': mysql_host,
+        'PORT': mysql_port,
         'OPTIONS': {
             'charset': 'utf8mb4',
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         },
     }
     
-    # Always use MAMP socket if it exists (MAMP uses socket, not TCP/IP by default)
-    if os.path.exists(mamp_socket):
-        db_config['OPTIONS']['unix_socket'] = mamp_socket
-    elif mysql_host:
-        # Use explicit host if provided
-        db_config['HOST'] = mysql_host
-        db_config['PORT'] = os.getenv('MYSQL_PORT', '3306')
-    else:
-        # Fallback to TCP/IP
-        db_config['HOST'] = '127.0.0.1'
-        db_config['PORT'] = os.getenv('MYSQL_PORT', '3306')
-    
     DATABASES = {
         'default': db_config
     }
     
-    # Workaround for MySQL 5.7 with Django 5.2 (MAMP compatibility)
-    # Note: For production, upgrade to MySQL 8.0+
+    # Fix for MariaDB/MySQL compatibility with Django 5.2
     import django.db.backends.mysql.base
+    import django.db.backends.mysql.features
+    
+    # Disable RETURNING clause (not supported in MariaDB < 10.5 and older MySQL)
+    # This fixes the "RETURNING" syntax error
+    django.db.backends.mysql.features.DatabaseFeatures.can_return_columns_from_insert = False
+    django.db.backends.mysql.features.DatabaseFeatures.can_return_rows_from_bulk_insert = False
+    
+    # Skip version check for older MySQL/MariaDB versions
+    # Note: For production, upgrade to MySQL 8.0+ or MariaDB 10.5+
     original_check_database_version_supported = django.db.backends.mysql.base.DatabaseWrapper.check_database_version_supported
     def patched_check_database_version_supported(self):
         try:
             return original_check_database_version_supported(self)
         except Exception:
-            # Skip version check for MySQL 5.7 (MAMP)
+            # Skip version check for older MySQL versions
             pass
     django.db.backends.mysql.base.DatabaseWrapper.check_database_version_supported = patched_check_database_version_supported
 

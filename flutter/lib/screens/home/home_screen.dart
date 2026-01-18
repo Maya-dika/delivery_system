@@ -10,6 +10,7 @@ import '../orders/order_history_screen.dart';
 import '../orders/order_detail_screen.dart';
 import '../orders/confirm_orders_screen.dart';
 import '../orders/confirm_arrival_screen.dart';
+import '../manager/manager_scan_screen.dart';
 import '../search/search_screen.dart';
 import '../notification/notification_screen.dart';
 import '../message/message_screen.dart';
@@ -197,6 +198,19 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.qr_code_scanner),
+              title: const Text('Scan'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ManagerScanScreen(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.person),
               title: const Text('Profile'),
               onTap: () {
@@ -327,9 +341,10 @@ class _HomeScreenState extends State<HomeScreen> {
               // Action Buttons Section
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
+                child: Column(
                   children: [
-                    Expanded(
+                    SizedBox(
+                      width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () {
                           Navigator.push(
@@ -347,8 +362,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () {
                           Navigator.push(
@@ -360,6 +376,26 @@ class _HomeScreenState extends State<HomeScreen> {
                         },
                         icon: const Icon(Icons.warehouse),
                         label: const Text('Confirm Arrival Warehouse'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          backgroundColor: AppTheme.primaryGreen,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ManagerScanScreen(),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.qr_code_scanner),
+                        label: const Text('Scan'),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           backgroundColor: AppTheme.primaryGreen,

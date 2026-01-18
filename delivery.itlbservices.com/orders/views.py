@@ -6,6 +6,7 @@ from django.db.models.query_utils import Q
 from django.db.models import OuterRef, Subquery
 from django.db import transaction
 from django.http import HttpResponse, HttpResponseBadRequest
+from django.utils import timezone
 
 from rest_framework.response import Response
 from rest_framework import status
@@ -710,7 +711,7 @@ def order_request_save_api(request, pk=None):
     try:
         data = request.data
         instance = get_object_or_404(OrderRequest, pk=pk) if pk else None
-        
+
         is_supplier = request.user.user_type == 'supplier'
         supplier = Supplier.objects.filter(user=request.user, active=True).first()
 
@@ -722,17 +723,21 @@ def order_request_save_api(request, pk=None):
             if is_supplier and supplier:
                 obj.supplier = supplier
                 obj.warehouse = supplier.warehouse
-        
+
+            # Ensure all required fields are set
             obj.reference = obj.reference or generate_order_request_reference_number(request.user.company)
-            obj.created_by = obj.created_by or request.user
-            obj.created_at = obj.created_at or datetime.datetime.now()
+            obj.created_by = request.user  # always assign request.user
+            obj.created_at = timezone.now()  # timezone-aware datetime
             obj.status = obj.status or 'requested'
             obj.save()
             return JsonResponse({'success': True, 'id': obj.id})
         else:
             return JsonResponse({'success': False, 'error': str(form.errors)}, status=400)
+
     except Exception as e:
+        print(f"Save Exception: {e}")  # extra debug
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 def generate_order_request_reference_number(company) -> str:
     # Sequence-based reference using company config
