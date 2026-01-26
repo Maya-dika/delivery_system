@@ -13,25 +13,28 @@ class DropOffScreen extends StatefulWidget {
 class _DropOffScreenState extends State<DropOffScreen> {
   final _formKey = GlobalKey<FormState>();
   final _orderNumberController = TextEditingController();
+  final _confirmationCodeController = TextEditingController();
   final _notesController = TextEditingController();
   final MobileScannerController _scannerController = MobileScannerController();
   final ApiService _apiService = ApiService();
   bool _isSubmitting = false;
+  bool _itemScanned = false;
 
   @override
   void dispose() {
     _orderNumberController.dispose();
+    _confirmationCodeController.dispose();
     _notesController.dispose();
     _scannerController.dispose();
     super.dispose();
   }
 
-  Future<void> _scanBarcode() async {
+  Future<void> _scanItemBarcode() async {
     final result = await Navigator.push<String>(
       context,
       MaterialPageRoute(
         builder: (_) => _BarcodeScannerScreen(
-          title: 'Scan Order Number',
+          title: 'Scan Item Barcode',
         ),
       ),
     );
@@ -39,12 +42,32 @@ class _DropOffScreenState extends State<DropOffScreen> {
     if (result != null && mounted) {
       setState(() {
         _orderNumberController.text = result;
+        _itemScanned = true;
       });
+      
+      // Show success feedback
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Item scanned successfully'),
+          backgroundColor: AppTheme.primaryGreen,
+          duration: Duration(seconds: 2),
+        ),
+      );
     }
   }
 
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    if (!_itemScanned) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please scan the item barcode first'),
+          backgroundColor: Colors.orange,
+        ),
+      );
       return;
     }
 
@@ -54,6 +77,7 @@ class _DropOffScreenState extends State<DropOffScreen> {
 
     try {
       final trackingNumber = _orderNumberController.text.trim();
+      final confirmationCode = _confirmationCodeController.text.trim();
       
       // Get order by tracking number
       final order = await _apiService.getOrderByTrackingNumber(trackingNumber);
@@ -73,8 +97,12 @@ class _DropOffScreenState extends State<DropOffScreen> {
         return;
       }
 
-      // Confirm delivery using the order ID
-      final result = await _apiService.confirmDeliveryDriver(order.id);
+      // Confirm delivery using the order ID with confirmation code
+      final result = await _apiService.confirmDeliveryDriver(
+        order.id,
+        confirmationCode: confirmationCode,
+        notes: _notesController.text.trim(),
+      );
 
       if (mounted) {
         if (result['success'] == true) {
@@ -117,6 +145,8 @@ class _DropOffScreenState extends State<DropOffScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Drop Off'),
+        backgroundColor: AppTheme.white,
+        elevation: 1,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -125,64 +155,290 @@ class _DropOffScreenState extends State<DropOffScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextFormField(
-                controller: _orderNumberController,
-                decoration: InputDecoration(
-                  labelText: 'Order Number',
-                  prefixIcon: const Icon(Icons.numbers),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.qr_code_scanner),
-                    onPressed: _scanBarcode,
-                    tooltip: 'Scan Barcode',
-                  ),
+              // Step 1 - Scan Item
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter order number';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: _scanBarcode,
-                  icon: const Icon(Icons.qr_code_scanner, size: 18),
-                  label: const Text('Scan Barcode'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppTheme.primaryGreen,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: _itemScanned 
+                                  ? AppTheme.primaryGreen 
+                                  : AppTheme.lightGray,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: _itemScanned
+                                  ? const Icon(Icons.check, color: Colors.white, size: 20)
+                                  : const Text(
+                                      '1',
+                                      style: TextStyle(
+                                        color: AppTheme.darkGray,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Scan Item Barcode',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _orderNumberController,
+                        readOnly: true,
+                        decoration: InputDecoration(
+                          labelText: 'Order Number',
+                          prefixIcon: const Icon(Icons.inventory_2),
+                          filled: true,
+                          fillColor: _itemScanned 
+                              ? AppTheme.primaryGreen.withOpacity(0.1) 
+                              : Colors.grey[100],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please scan the item barcode';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _scanItemBarcode,
+                          icon: const Icon(Icons.qr_code_scanner),
+                          label: Text(_itemScanned ? 'Scan Again' : 'Scan Item Barcode'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _itemScanned 
+                                ? AppTheme.primaryGreen 
+                                : AppTheme.darkGray,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _notesController,
-                decoration: const InputDecoration(
-                  labelText: 'Notes (Optional)',
-                  prefixIcon: Icon(Icons.note),
+
+              // Step 2 - Enter Confirmation Code
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                maxLines: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: _itemScanned 
+                                  ? AppTheme.primaryGreen 
+                                  : AppTheme.lightGray,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Center(
+                              child: Text(
+                                '2',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Customer Confirmation Code',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _confirmationCodeController,
+                        enabled: _itemScanned,
+                        decoration: InputDecoration(
+                          labelText: 'Confirmation Code',
+                          hintText: 'Enter code from customer',
+                          prefixIcon: const Icon(Icons.pin),
+                          filled: true,
+                          fillColor: _itemScanned ? Colors.white : Colors.grey[100],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        keyboardType: TextInputType.text,
+                        textCapitalization: TextCapitalization.characters,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter confirmation code';
+                          }
+                          if (value.length < 4) {
+                            return 'Confirmation code must be at least 4 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue[200]!),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline, color: Colors.blue[700], size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Ask the customer for their confirmation code',
+                                style: TextStyle(
+                                  color: Colors.blue[700],
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Optional Notes
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.note_alt_outlined, color: AppTheme.darkGray),
+                          SizedBox(width: 12),
+                          Text(
+                            'Additional Notes (Optional)',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _notesController,
+                        enabled: _itemScanned,
+                        decoration: InputDecoration(
+                          hintText: 'Add any delivery notes...',
+                          filled: true,
+                          fillColor: _itemScanned ? Colors.white : Colors.grey[100],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        maxLines: 3,
+                      ),
+                    ],
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _isSubmitting ? null : _handleSubmit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryGreen,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: _isSubmitting
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+
+              // Submit Button
+              SizedBox(
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: (_isSubmitting || !_itemScanned) ? null : _handleSubmit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryGreen,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: AppTheme.lightGray,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.check_circle_outline, size: 24),
+                            SizedBox(width: 8),
+                            Text(
+                              'Confirm Delivery',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
-                      )
-                    : const Text('Confirm Delivery'),
+                ),
               ),
+              if (!_itemScanned)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Please complete Step 1 to continue',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -218,6 +474,7 @@ class _BarcodeScannerScreenState extends State<_BarcodeScannerScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
+        backgroundColor: AppTheme.white,
         actions: [
           IconButton(
             icon: const Icon(Icons.flash_on),
@@ -287,7 +544,7 @@ class _BarcodeScannerScreenState extends State<_BarcodeScannerScreen> {
                         child: Container(
                           width: 30,
                           height: 30,
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             border: Border(
                               top: BorderSide(color: AppTheme.primaryGreen, width: 4),
                               left: BorderSide(color: AppTheme.primaryGreen, width: 4),
@@ -301,7 +558,7 @@ class _BarcodeScannerScreenState extends State<_BarcodeScannerScreen> {
                         child: Container(
                           width: 30,
                           height: 30,
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             border: Border(
                               top: BorderSide(color: AppTheme.primaryGreen, width: 4),
                               right: BorderSide(color: AppTheme.primaryGreen, width: 4),
@@ -315,7 +572,7 @@ class _BarcodeScannerScreenState extends State<_BarcodeScannerScreen> {
                         child: Container(
                           width: 30,
                           height: 30,
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             border: Border(
                               bottom: BorderSide(color: AppTheme.primaryGreen, width: 4),
                               left: BorderSide(color: AppTheme.primaryGreen, width: 4),
@@ -329,7 +586,7 @@ class _BarcodeScannerScreenState extends State<_BarcodeScannerScreen> {
                         child: Container(
                           width: 30,
                           height: 30,
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             border: Border(
                               bottom: BorderSide(color: AppTheme.primaryGreen, width: 4),
                               right: BorderSide(color: AppTheme.primaryGreen, width: 4),

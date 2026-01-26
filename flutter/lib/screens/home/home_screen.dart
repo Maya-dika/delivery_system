@@ -76,19 +76,25 @@ class _HomeScreenState extends State<HomeScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const SearchScreen()),
-        );
+        ).then((_) => setState(() => _currentNavIndex = 0));
         break;
       case 2:
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const NotificationScreen()),
-        );
+          MaterialPageRoute(builder: (_) => const OrderHistoryScreen()),
+        ).then((_) => setState(() => _currentNavIndex = 0));
         break;
       case 3:
         Navigator.push(
           context,
+          MaterialPageRoute(builder: (_) => const NotificationScreen()),
+        ).then((_) => setState(() => _currentNavIndex = 0));
+        break;
+      case 4:
+        Navigator.push(
+          context,
           MaterialPageRoute(builder: (_) => const MessageScreen()),
-        );
+        ).then((_) => setState(() => _currentNavIndex = 0));
         break;
     }
   }
@@ -198,19 +204,6 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.qr_code_scanner),
-              title: const Text('Scan'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const ManagerScanScreen(),
-                  ),
-                );
-              },
-            ),
-            ListTile(
               leading: const Icon(Icons.person),
               title: const Text('Profile'),
               onTap: () {
@@ -233,7 +226,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Statistics Cards for Manager
+              // Statistics Cards
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
@@ -295,98 +288,28 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              
-              // Balance Card (for managers)
-              // BalanceCard(balance: Constants.defaultBalance),
-              
               const SizedBox(height: 24),
               
-              // Active Orders Section
+              // Quick Actions Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'Quick Actions',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Active Orders (${activeOrders.length})',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    Row(
-                      children: [
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const OrderHistoryScreen(),
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                          ),
-                          child: const Text('History'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              // Action Buttons Section
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  children: [
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ConfirmOrdersScreen(),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.check_circle),
-                        label: const Text('Confirm Orders'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          backgroundColor: Colors.orange,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ConfirmArrivalScreen(),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.warehouse),
-                        label: const Text('Confirm Arrival Warehouse'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          backgroundColor: AppTheme.primaryGreen,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
+                    Expanded(
+                      child: _buildActionCard(
+                        context,
+                        'Scan',
+                        Icons.qr_code_scanner,
+                        AppTheme.primaryGreen,
+                        () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -394,15 +317,55 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           );
                         },
-                        icon: const Icon(Icons.qr_code_scanner),
-                        label: const Text('Scan'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          backgroundColor: AppTheme.primaryGreen,
-                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildActionCard(
+                        context,
+                        'Confirm Orders',
+                        Icons.check_circle,
+                        Colors.orange,
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ConfirmOrdersScreen(),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _buildActionCard(
+                  context,
+                  'Confirm Arrival Warehouse',
+                  Icons.warehouse,
+                  AppTheme.primaryGreen,
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ConfirmArrivalScreen(),
+                      ),
+                    );
+                  },
+                  isFullWidth: true,
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // Active Orders Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'Active Orders (${activeOrders.length})',
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
               const SizedBox(height: 16),
@@ -417,9 +380,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 Padding(
                   padding: const EdgeInsets.all(32),
                   child: Center(
-                    child: Text(
-                      'No active orders',
-                      style: Theme.of(context).textTheme.bodyLarge,
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.inbox_outlined,
+                          size: 64,
+                          color: Colors.grey.shade400,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No active orders',
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 )
@@ -440,9 +415,34 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: CustomBottomNavBar(
+      bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentNavIndex,
         onTap: _onNavTap,
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: AppTheme.primaryGreen,
+        unselectedItemColor: Colors.grey,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.search),
+            label: 'Search',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.history),
+            label: 'History',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.notifications),
+            label: 'Notifications',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.message),
+            label: 'Messages',
+          ),
+        ],
       ),
     );
   }
@@ -478,5 +478,66 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-}
 
+  Widget _buildActionCard(
+    BuildContext context,
+    String title,
+    IconData icon,
+    Color color,
+    VoidCallback onTap, {
+    bool isFullWidth = false,
+  }) {
+    return Card(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: isFullWidth
+              ? Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(icon, color: color, size: 24),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ),
+                    Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(icon, color: color, size: 28),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}

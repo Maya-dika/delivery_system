@@ -286,20 +286,10 @@ class _ScanActionScreenState extends State<ScanActionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Scan & Action'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.flash_on),
-            onPressed: () {
-              _scannerController.toggleTorch();
-            },
-          ),
-        ],
-      ),
+      backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Camera Scanner
+          // Full Screen Camera Scanner - scans entire screen
           MobileScanner(
             controller: _scannerController,
             onDetect: (capture) {
@@ -313,116 +303,108 @@ class _ScanActionScreenState extends State<ScanActionScreen> {
             },
           ),
 
-          // Overlay with scanning area
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withOpacity(0.5),
-                  Colors.transparent,
-                  Colors.transparent,
-                  Colors.transparent,
-                  Colors.transparent,
-                  Colors.black.withOpacity(0.5),
+          // Top bar with controls
+          SafeArea(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.7),
+                    Colors.black.withOpacity(0.3),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'Scan & Action',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.flash_on, color: Colors.white, size: 28),
+                    onPressed: () {
+                      _scannerController.toggleTorch();
+                    },
+                  ),
                 ],
-                stops: const [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
               ),
             ),
+          ),
+
+          // Center guide (visual only - not restricting scan area)
+      //  Center(
+      //     child: Container(
+      //       width: MediaQuery.of(context).size.width * 0.8,  // 80% of screen width
+      //       height: MediaQuery.of(context).size.height * 0.8, // half screen height
+      //       decoration: BoxDecoration(
+      //         border: Border.all(
+      //           color: AppTheme.primaryGreen,
+      //           width: 4,
+      //         ),
+      //         borderRadius: BorderRadius.circular(20),
+      //       ),
+      //     ),
+      //   ),
+
+          // Bottom instruction text
+          Positioned(
+            bottom: 120,
+            left: 0,
+            right: 0,
             child: Column(
               children: [
-                const Spacer(),
                 Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 40),
-                  height: 250,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   decoration: BoxDecoration(
-                    border: Border.all(
-                      color: AppTheme.primaryGreen,
-                      width: 3,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(25),
                   ),
-                  child: Stack(
-                    children: [
-                      // Corner indicators
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        child: Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            border: Border(
-                              top: BorderSide(color: AppTheme.primaryGreen, width: 4),
-                              left: BorderSide(color: AppTheme.primaryGreen, width: 4),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        top: 0,
-                        right: 0,
-                        child: Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            border: Border(
-                              top: BorderSide(color: AppTheme.primaryGreen, width: 4),
-                              right: BorderSide(color: AppTheme.primaryGreen, width: 4),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        left: 0,
-                        child: Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            border: Border(
-                              bottom: BorderSide(color: AppTheme.primaryGreen, width: 4),
-                              left: BorderSide(color: AppTheme.primaryGreen, width: 4),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            border: Border(
-                              bottom: BorderSide(color: AppTheme.primaryGreen, width: 4),
-                              right: BorderSide(color: AppTheme.primaryGreen, width: 4),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                  child: const Text(
+                    'Scan barcode anywhere on screen',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
-                const SizedBox(height: 24),
-                Text(
-                  'Position barcode within the frame',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                if (_isProcessing) ...[
+                  const SizedBox(height: 16),
+                  const CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryGreen),
                   ),
-                ),
-                const SizedBox(height: 8),
-                if (_isProcessing)
-                  const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryGreen),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text(
+                      'Processing...',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
-                const Spacer(),
+                ],
               ],
             ),
           ),
@@ -434,104 +416,177 @@ class _ScanActionScreenState extends State<ScanActionScreen> {
               left: 0,
               right: 0,
               child: Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 10,
-                      offset: const Offset(0, -2),
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, -5),
                     ),
                   ],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_errorMessage != null)
+                child: SafeArea(
+                  top: false,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Drag handle
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        width: 40,
+                        height: 4,
                         decoration: BoxDecoration(
-                          color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red.shade200),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.error_outline, color: Colors.red.shade700),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                _errorMessage!,
-                                style: TextStyle(color: Colors.red.shade700),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    else if (_scannedOrder != null)
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryGreen.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppTheme.primaryGreen),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.check_circle, color: AppTheme.primaryGreen),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Order Found: ${_scannedOrder!.trackingNumber}',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: AppTheme.primaryGreen,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Status: ${_scannedOrder!.orderStatus}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
                         ),
                       ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: _resetScan,
-                            child: const Text('Scan Again'),
+                      const SizedBox(height: 16),
+                      
+                      if (_errorMessage != null)
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.red.shade200, width: 2),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.error_outline, color: Colors.red.shade700, size: 32),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _errorMessage!,
+                                  style: TextStyle(
+                                    color: Colors.red.shade700,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else if (_scannedOrder != null)
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryGreen.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppTheme.primaryGreen, width: 2),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: const BoxDecoration(
+                                  color: AppTheme.primaryGreen,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Order Found',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppTheme.darkGray,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _scannedOrder!.trackingNumber,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18,
+                                        color: AppTheme.primaryGreen,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[200],
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        _scannedOrder!.orderStatus,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[700],
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        if (_scannedOrder != null)
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
                           Expanded(
-                            child: ElevatedButton(
-                              onPressed: () {
-                                _showActionDialog(_scannedOrder!);
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.primaryGreen,
+                            child: OutlinedButton(
+                              onPressed: _resetScan,
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                side: BorderSide(color: AppTheme.darkGray, width: 2),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
-                              child: const Text('View Action'),
+                              child: const Text(
+                                'Scan Again',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ),
-                      ],
-                    ),
-                  ],
+                          const SizedBox(width: 12),
+                          if (_scannedOrder != null)
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  _showActionDialog(_scannedOrder!);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppTheme.primaryGreen,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: const Text(
+                                  'View Action',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -563,4 +618,3 @@ class ScanAction {
     required this.buttonText,
   });
 }
-

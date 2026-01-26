@@ -292,14 +292,27 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> confirmPickupDriver(int orderId) async {
+  /// Confirm pickup by driver with optional notes
+  Future<Map<String, dynamic>> confirmPickupDriver(
+    int orderId, {
+    String? notes,
+  }) async {
     try {
       final apiUrl = await baseUrl;
       final url = Uri.parse('$apiUrl/orders/confirm-pickup/driver/');
+      
+      final body = <String, dynamic>{
+        'order_id': orderId,
+      };
+      
+      if (notes != null && notes.isNotEmpty) {
+        body['notes'] = notes;
+      }
+      
       final response = await http.post(
         url,
         headers: await _getHeaders(),
-        body: jsonEncode({'order_id': orderId}),
+        body: jsonEncode(body),
       );
 
       if (response.statusCode == 200) {
@@ -313,14 +326,87 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> confirmDeliveryDriver(int orderId) async {
+  Future<Map<String, dynamic>> confirmOrderRequestPickup(
+  String orderRequestNumber,
+) async {
+  final apiUrl = await baseUrl;
+  final url = Uri.parse('$apiUrl/orders/confirm-pickup/order-request/');
+
+  final response = await http.post(
+    url,
+    headers: await _getHeaders(),
+    body: jsonEncode({
+      'order_request_number': orderRequestNumber,
+    }),
+  );
+
+  if (response.statusCode == 200) {
+    return jsonDecode(response.body);
+  } else {
+    throw ApiError.fromJson(jsonDecode(response.body));
+  }
+}
+
+  /// Confirm pickup for order request (batch pickup from same store)
+  Future<Map<String, dynamic>> confirmPickupOrderRequest(
+    String orderRequestNumber, {
+    String? notes,
+  }) async {
     try {
       final apiUrl = await baseUrl;
-      final url = Uri.parse('$apiUrl/orders/confirm-delivery/driver/');
+      final url = Uri.parse('$apiUrl/orders/confirm-pickup/order-request/');
+      
+      final body = <String, dynamic>{
+        'order_request_number': orderRequestNumber,
+      };
+      
+      if (notes != null && notes.isNotEmpty) {
+        body['notes'] = notes;
+      }
+      
       final response = await http.post(
         url,
         headers: await _getHeaders(),
-        body: jsonEncode({'order_id': orderId}),
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw ApiError.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      if (e is ApiError) rethrow;
+      throw ApiError(message: 'Network error: ${e.toString()}');
+    }
+  }
+
+  /// Confirm delivery by driver with confirmation code
+  Future<Map<String, dynamic>> confirmDeliveryDriver(
+    int orderId, {
+    String? confirmationCode,
+    String? notes,
+  }) async {
+    try {
+      final apiUrl = await baseUrl;
+      final url = Uri.parse('$apiUrl/orders/confirm-delivery/driver/');
+      
+      final body = <String, dynamic>{
+        'order_id': orderId,
+      };
+      
+      if (confirmationCode != null && confirmationCode.isNotEmpty) {
+        body['confirmation_code'] = confirmationCode;
+      }
+      
+      if (notes != null && notes.isNotEmpty) {
+        body['notes'] = notes;
+      }
+      
+      final response = await http.post(
+        url,
+        headers: await _getHeaders(),
+        body: jsonEncode(body),
       );
 
       if (response.statusCode == 200) {
@@ -567,4 +653,3 @@ class ApiService {
     }
   }
 }
-

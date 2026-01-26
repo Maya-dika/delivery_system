@@ -191,5 +191,7 @@ class ApiError {
       statusCode: json['status_code'],
     );
   }
+  @override
+  String toString() => message;
 }
 

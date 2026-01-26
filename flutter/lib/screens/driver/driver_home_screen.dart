@@ -27,39 +27,26 @@ class DriverHomeScreen extends StatefulWidget {
   State<DriverHomeScreen> createState() => _DriverHomeScreenState();
 }
 
-class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerProviderStateMixin {
+class _DriverHomeScreenState extends State<DriverHomeScreen> {
   final ApiService _apiService = ApiService();
   List<Order> _orders = [];
   bool _isLoading = true;
   int _currentNavIndex = 0;
   
-  // Tab controller and task-related state
-  late TabController _tabController;
-  List<Order> _taskOrders = [];
-  bool _isLoadingTasks = false;
-  String? _selectedTaskStatus;
-  bool _tasksLoaded = false;
+  // Task-related state
+  List<Order> _pickupOrders = [];
+  List<Order> _deliveryOrders = [];
+  bool _isLoadingPickup = false;
+  bool _isLoadingDelivery = false;
+  String? _selectedPickupStatus;
+  String? _selectedDeliveryStatus;
+  bool _pickupLoaded = false;
+  bool _deliveryLoaded = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(_handleTabChange);
     _loadOrders();
-  }
-
-  @override
-  void dispose() {
-    _tabController.removeListener(_handleTabChange);
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  void _handleTabChange() {
-    if (_tabController.index == 1 && !_tasksLoaded) {
-      // Load tasks when Tasks tab is first selected with default 'All' filter
-      _loadTaskOrders(status: null);
-    }
   }
 
   Future<void> _loadOrders() async {
@@ -85,9 +72,9 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
     }
   }
 
-  Future<void> _loadTaskOrders({String? status}) async {
+  Future<void> _loadPickupOrders({String? status}) async {
     setState(() {
-      _isLoadingTasks = true;
+      _isLoadingPickup = true;
     });
 
     try {
@@ -96,68 +83,429 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
         status: status,
       );
       setState(() {
-        _taskOrders = response.data;
-        _isLoadingTasks = false;
-        _selectedTaskStatus = status;
-        _tasksLoaded = true;
+        _pickupOrders = response.data;
+        _isLoadingPickup = false;
+        _selectedPickupStatus = status;
+        _pickupLoaded = true;
       });
     } catch (e) {
       setState(() {
-        _isLoadingTasks = false;
+        _isLoadingPickup = false;
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading tasks: ${e.toString()}')),
+          SnackBar(content: Text('Error loading pickup orders: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
+  Future<void> _loadDeliveryOrders({String? status}) async {
+    setState(() {
+      _isLoadingDelivery = true;
+    });
+
+    try {
+      final response = await _apiService.getOrders(
+        length: 50,
+        status: status,
+      );
+      setState(() {
+        _deliveryOrders = response.data;
+        _isLoadingDelivery = false;
+        _selectedDeliveryStatus = status;
+        _deliveryLoaded = true;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingDelivery = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading delivery orders: ${e.toString()}')),
         );
       }
     }
   }
 
   void _onNavTap(int index) {
+    // Load data for tabs that haven't been loaded yet
+    if (index == 1 && !_pickupLoaded) {
+      _loadPickupOrders(status: null);
+    } else if (index == 2 && !_deliveryLoaded) {
+      _loadDeliveryOrders(status: null);
+    }
+
     setState(() {
       _currentNavIndex = index;
     });
+  }
 
-    // Navigate to different screens based on index
-    switch (index) {
-      case 0:
-        // Already on home, do nothing
-        break;
-      case 1:
-        // Statement
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => DriverStatementScreen(user: widget.user),
-          ),
-        );
-        break;
-      case 2:
-        // Performance
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => DriverPerformanceScreen(user: widget.user),
-          ),
-        );
-        break;
-      case 3:
-        // Profile
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ProfileScreen(user: widget.user),
-          ),
-        );
-        break;
-    }
+  Widget _buildHomeTab() {
+    final assignedOrders = _orders;
+    
+    return RefreshIndicator(
+      onRefresh: _loadOrders,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Driver Stats Cards
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      context,
+                      'Total Orders',
+                      assignedOrders.length.toString(),
+                      Icons.local_shipping,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      context,
+                      'Pending',
+                      assignedOrders
+                          .where((o) => o.orderStatus
+                              .toLowerCase()
+                              .contains('pending'))
+                          .length
+                          .toString(),
+                      Icons.pending,
+                      color: Colors.orange,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      context,
+                      'Delivered',
+                      assignedOrders
+                          .where((o) => o.orderStatus
+                              .toLowerCase()
+                              .contains('delivered'))
+                          .length
+                          .toString(),
+                      Icons.check_circle,
+                      color: AppTheme.primaryGreen,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      context,
+                      'In Transit',
+                      assignedOrders
+                          .where((o) => o.orderStatus
+                              .toLowerCase()
+                              .contains('transit'))
+                          .length
+                          .toString(),
+                      Icons.directions_car,
+                      color: Colors.blue,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            
+            // Quick Actions Section
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Quick Actions',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      // QuickActionButton(
+                      //   icon: Icons.qr_code_scanner,
+                      //   label: 'Scan',
+                      //   onTap: () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(
+                      //         builder: (_) => ScanActionScreen(user: widget.user),
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
+                      QuickActionButton(
+                        icon: Icons.local_shipping,
+                        label: 'Pick Up',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const PickUpScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      QuickActionButton(
+                        icon: Icons.delivery_dining,
+                        label: 'Drop Off',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const DropOffScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            
+            // Assigned Orders Section
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'My Assigned Orders (${assignedOrders.length})',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // Orders List
+            if (_isLoading)
+              const Padding(
+                padding: EdgeInsets.all(32),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (assignedOrders.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(32),
+                child: Center(
+                  child: Text(
+                    'No assigned orders',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                ),
+              )
+            else
+              ...assignedOrders.map((order) => OrderCard(
+                    order: order,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => OrderDetailScreen(order: order),
+                        ),
+                      );
+                    },
+                  )),
+            const SizedBox(height: 80),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPickupTab() {
+    return RefreshIndicator(
+      onRefresh: () => _loadPickupOrders(status: _selectedPickupStatus),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Status Filter Section
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildFilterChip(
+                      context,
+                      'All',
+                      _selectedPickupStatus == null,
+                      () => _loadPickupOrders(status: null),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildFilterChip(
+                      context,
+                      'Assigned',
+                      _selectedPickupStatus == 'assigned',
+                      () => _loadPickupOrders(status: 'assigned'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildFilterChip(
+                      context,
+                      'Pending',
+                      _selectedPickupStatus == 'pending',
+                      () => _loadPickupOrders(status: 'pending'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // Pickup Orders List
+            if (_isLoadingPickup)
+              const Padding(
+                padding: EdgeInsets.all(32),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_pickupOrders.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(32),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.local_shipping_outlined,
+                        size: 64,
+                        color: AppTheme.lightGray,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No pickup orders',
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ..._pickupOrders.map((order) => OrderCard(
+                    order: order,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => OrderDetailScreen(order: order),
+                        ),
+                      );
+                    },
+                  )),
+            const SizedBox(height: 80),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeliveryTab() {
+    return RefreshIndicator(
+      onRefresh: () => _loadDeliveryOrders(status: _selectedDeliveryStatus),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Status Filter Section
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildFilterChip(
+                      context,
+                      'All',
+                      _selectedDeliveryStatus == null,
+                      () => _loadDeliveryOrders(status: null),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildFilterChip(
+                      context,
+                      'In Transit',
+                      _selectedDeliveryStatus == 'in_transit',
+                      () => _loadDeliveryOrders(status: 'in_transit'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildFilterChip(
+                      context,
+                      'Delivered',
+                      _selectedDeliveryStatus == 'delivered',
+                      () => _loadDeliveryOrders(status: 'delivered'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // Delivery Orders List
+            if (_isLoadingDelivery)
+              const Padding(
+                padding: EdgeInsets.all(32),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_deliveryOrders.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(32),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.delivery_dining_outlined,
+                        size: 64,
+                        color: AppTheme.lightGray,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No delivery orders',
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ..._deliveryOrders.map((order) => OrderCard(
+                    order: order,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => OrderDetailScreen(order: order),
+                        ),
+                      );
+                    },
+                  )),
+            const SizedBox(height: 80),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPerformanceTab() {
+    return DriverPerformanceScreen(user: widget.user);
   }
 
   @override
   Widget build(BuildContext context) {
-    // Filter to show only assigned orders (drivers see only their orders)
-    final assignedOrders = _orders;
-
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
@@ -202,49 +550,6 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
                 ),
               ),
             ],
-          ),
-        ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(56),
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8F9FA),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 2,
-                  offset: const Offset(0, 1),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Container(
-                  height: 1,
-                  color: AppTheme.lightGray.withOpacity(0.5),
-                ),
-                TabBar(
-                  controller: _tabController,
-                  labelColor: AppTheme.primaryGreen,
-                  unselectedLabelColor: AppTheme.darkGray,
-                  indicatorColor: AppTheme.primaryGreen,
-                  indicatorWeight: 3,
-                  indicatorSize: TabBarIndicatorSize.label,
-                  labelStyle: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
-                  unselectedLabelStyle: const TextStyle(
-                    fontWeight: FontWeight.normal,
-                    fontSize: 16,
-                  ),
-                  tabs: const [
-                    Tab(text: 'Home'),
-                    Tab(text: 'Tasks'),
-                  ],
-                ),
-              ],
-            ),
           ),
         ),
       ),
@@ -301,9 +606,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
               selected: _currentNavIndex == 0,
               onTap: () {
                 Navigator.pop(context);
-                setState(() {
-                  _currentNavIndex = 0;
-                });
+                _onNavTap(0);
               },
             ),
             ListTile(
@@ -315,19 +618,6 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
                   context,
                   MaterialPageRoute(
                     builder: (_) => DriverStatementScreen(user: widget.user),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.trending_up),
-              title: const Text('Performance'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => DriverPerformanceScreen(user: widget.user),
                   ),
                 );
               },
@@ -348,297 +638,13 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: IndexedStack(
+        index: _currentNavIndex,
         children: [
-          // Home Tab
-          RefreshIndicator(
-            onRefresh: _loadOrders,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Driver Stats Cards
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            context,
-                            'Total Orders',
-                            assignedOrders.length.toString(),
-                            Icons.local_shipping,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildStatCard(
-                            context,
-                            'Pending',
-                            assignedOrders
-                                .where((o) => o.orderStatus
-                                    .toLowerCase()
-                                    .contains('pending'))
-                                .length
-                                .toString(),
-                            Icons.pending,
-                            color: Colors.orange,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            context,
-                            'Delivered',
-                            assignedOrders
-                                .where((o) => o.orderStatus
-                                    .toLowerCase()
-                                    .contains('delivered'))
-                                .length
-                                .toString(),
-                            Icons.check_circle,
-                            color: AppTheme.primaryGreen,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildStatCard(
-                            context,
-                            'In Transit',
-                            assignedOrders
-                                .where((o) => o.orderStatus
-                                    .toLowerCase()
-                                    .contains('transit'))
-                                .length
-                                .toString(),
-                            Icons.directions_car,
-                            color: Colors.blue,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // Quick Actions Section
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Quick Actions',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            QuickActionButton(
-                              icon: Icons.qr_code_scanner,
-                              label: 'Scan',
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => ScanActionScreen(user: widget.user),
-                                  ),
-                                );
-                              },
-                            ),
-                            QuickActionButton(
-                              icon: Icons.local_shipping,
-                              label: 'Pick Up',
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const PickUpScreen(),
-                                  ),
-                                );
-                              },
-                            ),
-                            QuickActionButton(
-                              icon: Icons.delivery_dining,
-                              label: 'Drop Off',
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const DropOffScreen(),
-                                  ),
-                                );
-                              },
-                            ),
-                            QuickActionButton(
-                              icon: Icons.local_offer,
-                              label: 'Promo',
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const PromoScreen(),
-                                  ),
-                                );
-                              },
-                            ),
-                            QuickActionButton(
-                              icon: Icons.account_balance_wallet,
-                              label: 'Top Up',
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const TopUpScreen(),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // Assigned Orders Section
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      'My Assigned Orders (${assignedOrders.length})',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Orders List
-                  if (_isLoading)
-                    const Padding(
-                      padding: EdgeInsets.all(32),
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  else if (assignedOrders.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Center(
-                        child: Text(
-                          'No assigned orders',
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ),
-                    )
-                  else
-                    ...assignedOrders.map((order) => OrderCard(
-                          order: order,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => OrderDetailScreen(order: order),
-                              ),
-                            );
-                          },
-                        )),
-                  const SizedBox(height: 80),
-                ],
-              ),
-            ),
-          ),
-          // Tasks Tab
-          RefreshIndicator(
-            onRefresh: () => _loadTaskOrders(status: _selectedTaskStatus),
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Status Filter Section
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _buildFilterChip(
-                            context,
-                            'All',
-                            _selectedTaskStatus == null,
-                            () => _loadTaskOrders(status: null),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildFilterChip(
-                            context,
-                            'Assigned',
-                            _selectedTaskStatus == 'assigned',
-                            () => _loadTaskOrders(status: 'assigned'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildFilterChip(
-                            context,
-                            'In Transit',
-                            _selectedTaskStatus == 'in_transit',
-                            () => _loadTaskOrders(status: 'in_transit'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Tasks List
-                  if (_isLoadingTasks)
-                    const Padding(
-                      padding: EdgeInsets.all(32),
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  else if (_taskOrders.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Center(
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.assignment_outlined,
-                              size: 64,
-                              color: AppTheme.lightGray,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No tasks',
-                              style: Theme.of(context).textTheme.bodyLarge,
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    ..._taskOrders.map((order) => OrderCard(
-                          order: order,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => OrderDetailScreen(order: order),
-                              ),
-                            );
-                          },
-                        )),
-                  const SizedBox(height: 80),
-                ],
-              ),
-            ),
-          ),
+          _buildHomeTab(),
+          _buildPickupTab(),
+          _buildDeliveryTab(),
+          _buildPerformanceTab(),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -653,16 +659,16 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long),
-            label: 'Statement',
+            icon: Icon(Icons.local_shipping),
+            label: 'Pickup List',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.delivery_dining),
+            label: 'Delivery List',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.trending_up),
             label: 'Performance',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
           ),
         ],
       ),
@@ -733,4 +739,3 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
     );
   }
 }
-

@@ -38,18 +38,26 @@ class _ManagerScanScreenState extends State<ManagerScanScreen> {
   }
 
   Future<void> _scanBarcode() async {
-    final result = await Navigator.push<String>(
+    final result = await Navigator.push<List<String>>(
       context,
       MaterialPageRoute(
         builder: (_) => _BarcodeScannerScreen(
-          title: 'Scan Tracking Number',
+          title: 'Scan Tracking Numbers',
         ),
       ),
     );
 
-    if (result != null && mounted) {
+    if (result != null && result.isNotEmpty && mounted) {
       setState(() {
-        _barcodeController.text = result;
+        // Combine existing text with new scans
+        final existing = _barcodeController.text.trim();
+        final newBarcodes = result.join('\n');
+        
+        if (existing.isEmpty) {
+          _barcodeController.text = newBarcodes;
+        } else {
+          _barcodeController.text = '$existing\n$newBarcodes';
+        }
         _errorMessage = null;
       });
     }
@@ -295,6 +303,8 @@ class _ManagerScanScreenState extends State<ManagerScanScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
+              maxLines: 5,
+              minLines: 1,
               textInputAction: TextInputAction.done,
             ),
             const SizedBox(height: 8),
@@ -407,12 +417,43 @@ class _BarcodeScannerScreen extends StatefulWidget {
 
 class _BarcodeScannerScreenState extends State<_BarcodeScannerScreen> {
   final MobileScannerController _controller = MobileScannerController();
-  bool _isProcessing = false;
+  final Set<String> _scannedBarcodes = {};
+  final List<String> _orderedBarcodes = [];
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  void _addBarcode(String barcode) {
+    if (!_scannedBarcodes.contains(barcode)) {
+      setState(() {
+        _scannedBarcodes.add(barcode);
+        _orderedBarcodes.add(barcode);
+      });
+      
+      // Provide haptic feedback
+      // HapticFeedback.mediumImpact(); // Uncomment if you want haptic feedback
+    }
+  }
+
+  void _removeBarcode(String barcode) {
+    setState(() {
+      _scannedBarcodes.remove(barcode);
+      _orderedBarcodes.remove(barcode);
+    });
+  }
+
+  void _clearAll() {
+    setState(() {
+      _scannedBarcodes.clear();
+      _orderedBarcodes.clear();
+    });
+  }
+
+  void _done() {
+    Navigator.pop(context, _orderedBarcodes);
   }
 
   @override
@@ -427,6 +468,12 @@ class _BarcodeScannerScreenState extends State<_BarcodeScannerScreen> {
               _controller.toggleTorch();
             },
           ),
+          if (_scannedBarcodes.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete_sweep),
+              onPressed: _clearAll,
+              tooltip: 'Clear all',
+            ),
         ],
       ),
       body: Stack(
@@ -434,132 +481,174 @@ class _BarcodeScannerScreenState extends State<_BarcodeScannerScreen> {
           MobileScanner(
             controller: _controller,
             onDetect: (capture) {
-              if (_isProcessing) return;
-              
               final List<Barcode> barcodes = capture.barcodes;
-              if (barcodes.isNotEmpty) {
-                final barcode = barcodes.first;
+              for (final barcode in barcodes) {
                 if (barcode.rawValue != null) {
-                  setState(() {
-                    _isProcessing = true;
-                  });
-                  
-                  // Return the scanned value
-                  Navigator.pop(context, barcode.rawValue);
+                  _addBarcode(barcode.rawValue!);
                 }
               }
             },
           ),
-          // Overlay
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withOpacity(0.5),
-                  Colors.transparent,
-                  Colors.transparent,
-                  Colors.transparent,
-                  Colors.transparent,
-                  Colors.black.withOpacity(0.5),
+          // Instruction overlay
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.7),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    'Scan multiple barcodes',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Point camera at barcodes to scan',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 14,
+                    ),
+                  ),
                 ],
-                stops: const [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
               ),
             ),
-            child: Column(
-              children: [
-                const Spacer(),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 40),
-                  height: 250,
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: AppTheme.primaryGreen,
-                      width: 3,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
+          ),
+          // Scanned barcodes list
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.4,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 10,
+                    offset: const Offset(0, -2),
                   ),
-                  child: Stack(
-                    children: [
-                      // Corner indicators
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        child: Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            border: Border(
-                              top: BorderSide(color: AppTheme.primaryGreen, width: 4),
-                              left: BorderSide(color: AppTheme.primaryGreen, width: 4),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        top: 0,
-                        right: 0,
-                        child: Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            border: Border(
-                              top: BorderSide(color: AppTheme.primaryGreen, width: 4),
-                              right: BorderSide(color: AppTheme.primaryGreen, width: 4),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        left: 0,
-                        child: Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            border: Border(
-                              bottom: BorderSide(color: AppTheme.primaryGreen, width: 4),
-                              left: BorderSide(color: AppTheme.primaryGreen, width: 4),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            border: Border(
-                              bottom: BorderSide(color: AppTheme.primaryGreen, width: 4),
-                              right: BorderSide(color: AppTheme.primaryGreen, width: 4),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Position barcode within the frame',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                if (_isProcessing)
-                  const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryGreen),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Handle bar
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                const Spacer(),
-              ],
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Scanned (${_scannedBarcodes.length})',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (_scannedBarcodes.isNotEmpty)
+                          ElevatedButton.icon(
+                            onPressed: _done,
+                            icon: const Icon(Icons.check, size: 18),
+                            label: const Text('Done'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryGreen,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  // List
+                  if (_scannedBarcodes.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.qr_code_scanner,
+                            size: 48,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'No barcodes scanned yet',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Flexible(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        padding: const EdgeInsets.only(bottom: 16),
+                        itemCount: _orderedBarcodes.length,
+                        separatorBuilder: (context, index) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final barcode = _orderedBarcodes[index];
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: AppTheme.primaryGreen.withOpacity(0.1),
+                              child: Text(
+                                '${index + 1}',
+                                style: TextStyle(
+                                  color: AppTheme.primaryGreen,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              barcode,
+                              style: const TextStyle(
+                                fontFamily: 'monospace',
+                                fontSize: 14,
+                              ),
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.close, size: 20),
+                              onPressed: () => _removeBarcode(barcode),
+                              color: Colors.red,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ],
