@@ -373,7 +373,7 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 24),
         // App Name
         Text(
-          'Delivery App',
+          'LogiNext',
           style: Theme.of(context).textTheme.displayMedium?.copyWith(
                 color: AppTheme.primaryGreen,
                 fontWeight: FontWeight.bold,
