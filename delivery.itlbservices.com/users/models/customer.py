@@ -1,6 +1,6 @@
 from django.db import models
 
-from core.models import Address, Company
+from core.models import Address, Company, Account
 from . import User
 
 class Customer(models.Model):
@@ -11,6 +11,7 @@ class Customer(models.Model):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     active = models.BooleanField(db_comment="determines if customer is active with this company", default=True)
     company = models.ForeignKey(Company, on_delete=models.SET_NULL, null=True)
+    accounts = models.ManyToManyField(Account, blank=True, related_name='customers')
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="customer_created_by")
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="customer_updated_by")
     created_at = models.DateTimeField()

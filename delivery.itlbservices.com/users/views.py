@@ -15,7 +15,7 @@ from .models import User, Employee, Supplier, Customer
 from .models import user as UserModel, UserTypes
 from .forms import UserForm, EmployeeForm, CustomerForm, LoginForm, UserPasswordResetForm, UserSetPasswordForm, UserPasswordChangeForm
 from .forms import SupplierForm, OptionalUserForm, AddressFormSet, AddressForm
-from core.models import Address, Warehouse
+from core.models import Address, Warehouse, Account
 from core.decorators import role_required
 
 import datetime
@@ -59,23 +59,47 @@ def drivers(request):
 @role_required(allowed_roles=['employee'], employee_types=['admin', 'warehouse_manager'])
 def save_employee(request, pk=None):
     employee = get_object_or_404(Employee, pk=pk) if pk else None
-    form = EmployeeForm(request.POST or None, instance=employee)
-    user_form = OptionalUserForm(request.POST or None, instance=employee.user if employee else None)
+
+    form = EmployeeForm(
+        request.POST or None,
+        instance=employee,
+        user=request.user
+    )
+    user_form = OptionalUserForm(
+        request.POST or None,
+        instance=employee.user if employee else None
+    )
     form.user_form = user_form
-    
+
     redirect_back_url = '/users/employees/'
     if employee and employee.employee_type == 'driver':
         redirect_back_url = '/users/drivers/'
 
     if request.method == 'POST':
-        if form.is_valid() and form.user_form.is_valid():
-            form.save()
-            if employee and employee.employee_type == 'driver':
+        if form.is_valid() and user_form.is_valid():
+            # Save employee and M2M correctly
+            employee = form.save()
+            form.save_m2m()
+
+            # Create child accounts for selected parent accounts
+            for parent_account in employee.accounts.all():
+                Account.objects.create(
+                    name=f"{employee.name} - {parent_account.name} ({parent_account.currency.symbol})",
+                    currency=parent_account.currency,
+                    parent=parent_account,
+                    company=request.user.company,
+                    created_at=datetime.datetime.now()
+                )
+
+            if employee.employee_type == 'driver':
                 return redirect('users:drivers')
             return redirect('users:employees')
-    
-    return render(request, 'forms/form_template.html', {'form': form, 'form_title': 'Update Employee' if pk else 'Create Employee', 'redirect_back_url': redirect_back_url})
 
+    return render(request, 'forms/form_template.html', {
+        'form': form,
+        'form_title': 'Update Employee' if pk else 'Create Employee',
+        'redirect_back_url': redirect_back_url
+    })
 
 @login_required
 @role_required(allowed_roles=['employee'], employee_types=['admin', 'warehouse_manager', 'internal_user'])
@@ -86,7 +110,7 @@ def suppliers(request):
 @login_required
 @role_required(allowed_roles=['employee'], employee_types=['admin', 'warehouse_manager'])
 def supplier_create(request):
-    supplier_form = SupplierForm(request.POST or None)
+    supplier_form = SupplierForm(request.POST, user=request.user)
     user_form = OptionalUserForm(request.POST or None)
     address_form = AddressForm(request.POST or None)
     create_user = request.POST.get("create_user") == "1"
@@ -121,7 +145,27 @@ def supplier_create(request):
             supplier.created_by = request.user
             supplier.created_at = datetime.datetime.now()
             supplier.save()
+            
+            # Save many-to-many relationships
+            supplier_form.save_m2m()
+
+            # Create child accounts for each selected parent account
+            for parent_account in supplier.accounts.all():
+                Account.objects.create(
+                    name=f"{supplier.name} - {parent_account.name} ({parent_account.currency.symbol})",
+                    currency=parent_account.currency,
+                    parent=parent_account,
+                    company=request.user.company,
+                    created_at=datetime.datetime.now()
+                )
+
             return redirect('users:suppliers')
+    else:
+        supplier_form = SupplierForm(user=request.user)
+        user_form = OptionalUserForm()
+        address_form = AddressForm()
+        create_user = False
+        user_has_account = False
 
     return render(request, 'forms/supplier_form_view.html', {
         'form_title': 'Create',
@@ -145,13 +189,16 @@ def supplier_update(request, pk):
     user_has_account = supplier.user is not None
 
     if request.method == 'POST':
-        supplier_form = SupplierForm(request.POST, instance=supplier)
+        supplier_form = SupplierForm(request.POST, instance=supplier, user=request.user)
         address_form = AddressForm(request.POST)
 
         user_form_submitted = request.POST.get('username')
         user_form = OptionalUserForm(request.POST, instance=supplier.user if supplier.user else None) if user_form_submitted else None
 
         if supplier_form.is_valid() and address_form.is_valid() and (not user_form or user_form.is_valid()):
+            # Get the old accounts before saving
+            old_accounts = set(supplier.accounts.all())
+            
             supplier = supplier_form.save(commit=False)
 
             if user_form:
@@ -164,6 +211,23 @@ def supplier_update(request, pk):
             supplier.updated_by = request.user
             supplier.updated_at = datetime.datetime.now()
             supplier.save()
+            
+            # Save many-to-many relationships
+            supplier_form.save_m2m()
+            
+            # Get new accounts after saving
+            new_accounts = set(supplier.accounts.all())
+            
+            # Create child accounts only for newly added parent accounts
+            added_accounts = new_accounts - old_accounts
+            for parent_account in added_accounts:
+                Account.objects.create(
+                    name=f"{supplier.name} - {parent_account.name} ({parent_account.currency.symbol})",
+                    currency=parent_account.currency,
+                    parent=parent_account,
+                    company=request.user.company,
+                    created_at=datetime.datetime.now()
+                )
 
             return redirect('users:update_supplier', pk=supplier.pk)
 
@@ -171,7 +235,7 @@ def supplier_update(request, pk):
             user_has_account = True
 
     else:
-        supplier_form = SupplierForm(instance=supplier)
+        supplier_form = SupplierForm(instance=supplier, user=request.user)
         user_form = OptionalUserForm(instance=supplier.user or None)
         address_form = AddressForm(instance=supplier.address or None)
 
@@ -187,12 +251,14 @@ def supplier_update(request, pk):
 @role_required(allowed_roles=['employee'], employee_types=['admin', 'warehouse_manager', 'internal_user'])
 def create_supplier_modal_view(request):
     if request.method == "GET":
-        warehouses = Warehouse.objects.filter(active=True)
+        warehouses = Warehouse.objects.filter(active=True)  
+        accounts = Account.objects.filter(company=request.user.company).select_related('parent', 'currency')
         allowed_countries = ['LB']
         country_choices = [(code, name) for code, name in countries if code in allowed_countries]
 
         return render(request, 'forms/supplier_modal_form.html', {
             'warehouses': warehouses,
+            'accounts': accounts,
             'countries': country_choices,
         })
     
@@ -202,6 +268,7 @@ def create_supplier_modal_view(request):
         phone_number = request.POST.get('phone_number')
         domain = request.POST.get('domain_description')
         warehouse = request.POST.get('warehouse')
+        account_id = request.POST.get('account')
         country = request.POST.get('country')
         city = request.POST.get('city')
         street = request.POST.get('street')
@@ -210,6 +277,7 @@ def create_supplier_modal_view(request):
         create_user = request.POST.get('create_user')
         username = request.POST.get('username')
         password = request.POST.get('password')
+        account_ids = request.POST.getlist('account')
 
         form_data = {
             'name': name,
@@ -217,6 +285,7 @@ def create_supplier_modal_view(request):
             'phone_number': phone_number,
             'domain_description': domain,
             'warehouse': warehouse,
+            'account': account_id,
             'country': country,
             'city': city,
             'street': street,
@@ -235,10 +304,12 @@ def create_supplier_modal_view(request):
 
         except Exception:
             warehouses = Warehouse.objects.filter(active=True)
+            accounts = Account.objects.filter(company=request.user.company).select_related('parent', 'currency')
             allowed_countries = ['LB']
             country_choices = [(code, name) for code, name in countries if code in allowed_countries]
             return render(request, 'forms/supplier_modal_form.html', {
                 'warehouses': warehouses,
+                'accounts': accounts,
                 'countries': country_choices,
                 'error': 'Invalid phone number. Please enter a valid number.',
                 'form_data': form_data,
@@ -261,6 +332,14 @@ def create_supplier_modal_view(request):
             zip_code=zip_code
         )
         
+        # Get account if provided
+        parent_accounts = []
+        if account_ids:
+            parent_accounts = Account.objects.filter(
+                pk__in=[int(aid) for aid in account_ids],
+                company=request.user.company
+            )
+        
         # Create supplier
         supplier = Supplier.objects.create(
             name=name,
@@ -271,9 +350,21 @@ def create_supplier_modal_view(request):
             warehouse=Warehouse.objects.get(pk=int(warehouse) or 0),
             user=user,
             company=request.user.company,
-            created_by=request.user,
             created_at=datetime.datetime.now()
         )
+        
+        # Add accounts (many-to-many)
+        supplier.accounts.set(parent_accounts)
+        
+        # Create child accounts for each selected parent account
+        for parent_account in parent_accounts:
+            Account.objects.create(
+                name=f"{supplier.name} - {parent_account.name} ({parent_account.currency.symbol})",
+                currency=parent_account.currency,
+                parent=parent_account,
+                company=request.user.company,
+                created_at=datetime.datetime.now()
+            )
 
         return render(request, 'forms/supplier_success_modal.html', {
             'supplier': supplier,
@@ -281,7 +372,6 @@ def create_supplier_modal_view(request):
         })
 
     return JsonResponse({'success': False, 'error': 'Invalid request'})
-
 
 
 @login_required
@@ -293,7 +383,7 @@ def customers(request):
 @login_required
 @role_required(allowed_roles=['employee'], employee_types=['admin', 'warehouse_manager', 'internal_user'])
 def customer_create(request):
-    customer_form = CustomerForm(request.POST or None)
+    customer_form = CustomerForm(request.POST or None, user=request.user)
     user_form = OptionalUserForm(request.POST or None)
     address_formset = AddressFormSet(request.POST or None)
     create_user = request.POST.get("create_user") == "1"
@@ -319,6 +409,18 @@ def customer_create(request):
             customer.created_by = request.user
 					   
             customer.save()
+             # Save many-to-many relationships
+            customer_form.save_m2m()
+
+            # Create child accounts for each selected parent account
+            for parent_account in customer.accounts.all():
+                Account.objects.create(
+                    name=f"{customer.name} - {parent_account.name} ({parent_account.currency.symbol})",
+                    currency=parent_account.currency,
+                    parent=parent_account,
+                    company=request.user.company,
+                    created_at=datetime.datetime.now()
+                )
 
             addresses = []
             for form in address_formset:
@@ -345,7 +447,7 @@ def customer_update(request, pk):
     user_has_account = customer.user is not None
 
     if request.method == 'POST':
-        customer_form = CustomerForm(request.POST, instance=customer)
+        customer_form = CustomerForm(request.POST, instance=customer, user=request.user)
         address_formset = AddressFormSet(request.POST)
         
         user_form_submitted = request.POST.get('username')
@@ -359,6 +461,7 @@ def customer_update(request, pk):
         #     user_has_account = False
 
         if customer_form.is_valid() and address_formset.is_valid() and (not user_form or user_form.is_valid()):
+            old_accounts = set(customer.accounts.all())
             customer = customer_form.save(commit=False)
 
             if user_form:
@@ -379,6 +482,22 @@ def customer_update(request, pk):
             customer.updated_by = request.user
             customer.updated_at = datetime.datetime.now()
             customer.save()
+
+            customer_form.save_m2m()
+            
+            # Get new accounts after saving
+            new_accounts = set(customer.accounts.all())
+            
+            # Create child accounts only for newly added parent accounts
+            added_accounts = new_accounts - old_accounts
+            for parent_account in added_accounts:
+                Account.objects.create(
+                    name=f"{customer.name} - {parent_account.name} ({parent_account.currency.symbol})",
+                    currency=parent_account.currency,
+                    parent=parent_account,
+                    company=request.user.company,
+                    created_at=datetime.datetime.now()
+                )
 
             return redirect('users:update_customer', pk=customer.pk)
 
@@ -426,15 +545,19 @@ def create_customer_modal_view(request):
     if request.method == "GET":
         allowed_countries = ['LB']
         country_choices = [(code, name) for code, name in countries if code in allowed_countries]
+        accounts = Account.objects.filter(company=request.user.company).select_related('parent', 'currency')
+
 
         return render(request, 'forms/customer_modal_form.html', {
             'countries': country_choices,
+            'accounts': accounts,
         })
     
     elif request.method == 'POST':
         name = request.POST.get('name')
         email = request.POST.get('email')
         phone_number = request.POST.get('phone_number')
+        account_id = request.POST.get('account')
         country = request.POST.get('country')
         city = request.POST.get('city')
         street = request.POST.get('street')
@@ -443,11 +566,13 @@ def create_customer_modal_view(request):
         create_user = request.POST.get('create_user')
         username = request.POST.get('username')
         password = request.POST.get('password')
+        account_ids = request.POST.getlist('account')
 
         form_data = {
             'name': name,
             'email': email,
             'phone_number': phone_number,
+            'account': account_id,
             'country': country,
             'city': city,
             'street': street,
@@ -466,9 +591,11 @@ def create_customer_modal_view(request):
 
         except Exception:
             allowed_countries = ['LB']
+            accounts = Account.objects.filter(company=request.user.company).select_related('parent', 'currency')
             country_choices = [(code, name) for code, name in countries if code in allowed_countries]
             return render(request, 'forms/customer_modal_form.html', {
                 'countries': country_choices,
+                'accounts' : accounts,
                 'error': 'Invalid phone number. Please enter a valid number.',
                 'form_data': form_data,
             })
@@ -479,6 +606,14 @@ def create_customer_modal_view(request):
                 username=username,
                 password=password,
                 user_type='customer',
+                company=request.user.company
+            )
+
+        # Get account if provided
+        parent_accounts = []
+        if account_ids:
+            parent_accounts = Account.objects.filter(
+                pk__in=[int(aid) for aid in account_ids],
                 company=request.user.company
             )
         
@@ -492,6 +627,19 @@ def create_customer_modal_view(request):
             created_by=request.user,
             created_at=datetime.datetime.now()
         )
+
+         # Add accounts (many-to-many)
+        customer.accounts.set(parent_accounts)
+        
+        # Create child accounts for each selected parent account
+        for parent_account in parent_accounts:
+            Account.objects.create(
+                name=f"{customer.name} - {parent_account.name} ({parent_account.currency.symbol})",
+                currency=parent_account.currency,
+                parent=parent_account,
+                company=request.user.company,
+                created_at=datetime.datetime.now()
+            )
 
         address = Address.objects.create(
             country=country,

@@ -23,6 +23,10 @@ urlpatterns = [
     path("stock-locations/archive", views.archive_stock_locations, name="archive_stock_locations"),
     path("stock-locations/unarchive", views.unarchive_stock_locations, name="unarchive_stock_locations"),
     path("stock-locations/delete", views.delete_stock_locations, name="delete_stock_locations"),
+    path("accounts", views.accounts_list, name="accounts"),
+    path("accounts/create", views.account_form_view, name="create_account"),
+    path("accounts/<int:pk>/edit/", views.account_form_view, name="update_account"),
+    path("accounts/<int:pk>/delete", views.delete_account, name="delete_account"),
     
     path('routing-rules/', views.routing_rule_list, name='routing_rules'),
     path('routing-rules/add/', views.routing_rule_form_view, name='add_routing_rule'),

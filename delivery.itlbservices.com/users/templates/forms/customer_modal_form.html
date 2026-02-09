@@ -81,6 +81,24 @@
       </div>
 
       <hr/>
+      <h6>Accounts</h6>
+      <div class="row mt-2">
+        <div class="col-md-12">
+          <label for="account">Accounts (Optional - Hold Ctrl/Cmd to select multiple)</label>
+          <select id="supplier-account" name="account" class="form-select" multiple size="5">
+            {% for account in accounts %}
+              <option value="{{ account.id }}" {% if form_data.account and account.id|stringformat:'s' in form_data.account %}selected{% endif %}>
+                {{ account.name }} 
+                {% if account.currency %}- {{ account.currency.code }}{% endif %}
+                {% if account.parent %} ({{ account.parent.name }}){% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <hr/>
+
+      <hr/>
 
     </div>
     <div class="modal-footer">

@@ -1,6 +1,7 @@
 from django.db import models
 from .address import Address
 from .company import Company
+from .accounts import Account
 
 class Warehouse(models.Model):
     name = models.CharField(max_length=100)
@@ -8,6 +9,7 @@ class Warehouse(models.Model):
     address = models.OneToOneField(Address, on_delete=models.SET_NULL, null=True)
     warehouse_manager = models.ForeignKey("users.Employee", on_delete=models.SET_NULL, null=True, related_name="store_manager")
     active = models.BooleanField(default=True)
+    accounts = models.ManyToManyField(Account, blank=True, related_name='warehouses')
 
     def __str__(self):
         return self.name

@@ -1,0 +1,197 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load account_filters %}
+
+{% block title %}Accounts{% endblock %}
+
+{% block extrastyle %}
+<link rel="stylesheet" href="{% static 'vendor/datatables/css/datatables.min.css' %}">
+<style>
+  /* ===== Account Tree Styling ===== */
+  .account-tree,
+  .account-tree ul {
+    list-style: none;
+    padding-left: 0;
+    margin-left: 0;
+  }
+  .account-tree ul {
+    margin-left: 1.5rem;
+    border-left: 1px dashed #ccc;
+    padding-left: 1rem;
+  }
+  .account-tree li {
+    margin: 0.35rem 0;
+    position: relative;
+  }
+  .account-tree li::before {
+    content: '';
+    position: absolute;
+    top: 0.9rem;
+    left: -1rem;
+    width: 0.8rem;
+    border-top: 1px dashed #ccc;
+  }
+  .account-node {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .account-toggle {
+    font-weight: bold;
+    cursor: pointer;
+    width: 14px;
+    display: inline-block;
+    color: #555;
+    user-select: none;
+    transition: transform 0.2s;
+  }
+  .account-name {
+    font-weight: 500;
+  }
+  .account-actions a {
+    margin-left: 6px;
+    color: #666;
+  }
+  .account-actions a:hover {
+    color: #000;
+  }
+  /* Hide children when collapsed - using strong specificity */
+  ul.account-tree li.collapsed > ul,
+  ul.account-tree li.collapsed > ul.account-children {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+  
+  /* Ensure children are visible when not collapsed */
+  ul.account-tree li:not(.collapsed) > ul,
+  ul.account-tree li:not(.collapsed) > ul.account-children {
+    display: block !important;
+    visibility: visible !important;
+    height: auto !important;
+  }
+</style>
+{% endblock extrastyle %}
+
+{% block bodyclass %}hold-transition sidebar-mini layout-fixed{% endblock bodyclass %}
+
+{% block content %}
+<div class="content-wrapper">
+  <!-- Header -->
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h1>Accounts</h1>
+        </div>
+        <div class="col-sm-6 text-right">
+          <a href="{% url 'create_account' %}" class="btn btn-primary">
+            + Create Account
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Content -->
+  <section class="content">
+    <div class="container-fluid">
+      {% with root_accounts=tree|lookup:None %}
+        {% if root_accounts %}
+          <ul class="account-tree">
+            {% for account in root_accounts %}
+              {% include "account_node.html" with account=account tree=tree %}
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="alert alert-info">
+            No accounts created yet.
+          </div>
+        {% endif %}
+      {% endwith %}
+    </div>
+  </section>
+</div>
+
+<!-- Inline script to ensure it runs -->
+<script>
+(function() {
+  console.log('=== TREE SCRIPT STARTING ===');
+  
+  function initTree() {
+    console.log('initTree called');
+    
+    const tree = document.querySelector('.account-tree');
+    console.log('Tree element:', tree);
+    
+    if (!tree) {
+      console.error('NO TREE FOUND!');
+      return;
+    }
+    
+    const toggles = document.querySelectorAll('.account-toggle');
+    console.log('Found toggles:', toggles.length);
+    
+    // Use event delegation on the tree itself
+    tree.addEventListener('click', function(e) {
+      console.log('Tree clicked:', e.target);
+      
+      // Check if clicked element is a toggle
+      if (e.target.classList.contains('account-toggle')) {
+        console.log('>>> TOGGLE CLICKED <<<', e.target);
+        
+        // Find the parent LI
+        const li = e.target.closest('li');
+        console.log('Parent LI:', li);
+        
+        if (!li) {
+          console.log('No parent LI found');
+          return;
+        }
+        
+        // Check if this LI has children UL
+        const childrenUl = li.querySelector(':scope > ul');
+        console.log('Children UL:', childrenUl);
+        
+        if (!childrenUl) {
+          console.log('No children UL, this is a leaf node');
+          return;
+        }
+        
+        // Toggle collapsed class
+        const wasCollapsed = li.classList.contains('collapsed');
+        li.classList.toggle('collapsed');
+        
+        console.log('Toggled! Was collapsed:', wasCollapsed, 'Now collapsed:', li.classList.contains('collapsed'));
+        
+        // Update icon
+        if (li.classList.contains('collapsed')) {
+          e.target.textContent = '▸';
+          console.log('Set to collapsed icon');
+        } else {
+          e.target.textContent = '▾';
+          console.log('Set to expanded icon');
+        }
+      }
+    });
+    
+    console.log('=== TREE INITIALIZED SUCCESSFULLY ===');
+  }
+  
+  // Try multiple initialization methods
+  if (document.readyState === 'loading') {
+    console.log('Document still loading, waiting for DOMContentLoaded');
+    document.addEventListener('DOMContentLoaded', initTree);
+  } else {
+    console.log('Document already loaded, initializing now');
+    initTree();
+  }
+  
+  // Also try on window load as backup
+  window.addEventListener('load', function() {
+    console.log('Window loaded event fired');
+  });
+})();
+</script>
+{% endblock content %}

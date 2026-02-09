@@ -1,7 +1,5 @@
 from django.db import models
-
-from core.models.company import Company
-from core.models.warehouse import Warehouse
+from core.models import Warehouse, Address, Company, Account
 from . import User
 
 class EmployeeTypes(models.TextChoices):
@@ -21,6 +19,7 @@ class Employee(models.Model):
     warehouse = models.ForeignKey(Warehouse, on_delete=models.SET_NULL, null=True)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="employee_user")
     active = models.BooleanField(db_comment="If employee is still working for the company or not", default=1)
+    accounts = models.ManyToManyField(Account, blank=True, related_name='employee')
 
     def __str__(self):
         return self.name

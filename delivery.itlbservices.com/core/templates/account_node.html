@@ -1,0 +1,34 @@
+{% load account_filters %}
+
+<li>
+  <div class="account-node">
+    <span class="account-toggle">
+      {% if tree|lookup:account.id %}▾{% else %}•{% endif %}
+    </span>
+    <span class="account-name">
+      {{ account.name }}
+      {% if account.code %}
+        <small class="text-muted">({{ account.code }})</small>
+      {% endif %}
+    </span>
+    <span class="account-actions">
+      <a href="{% url 'update_account' account.id %}" title="Edit">
+        <i class="fas fa-edit"></i>
+      </a>
+      <a href="#" class="delete-account text-danger"
+         data-id="{{ account.id }}" title="Delete">
+        <i class="fas fa-trash"></i>
+      </a>
+    </span>
+  </div>
+  
+  {% with children=tree|lookup:account.id %}
+    {% if children %}
+      <ul class="account-children">
+        {% for child in children %}
+          {% include "account_node.html" with account=child tree=tree %}
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+</li>

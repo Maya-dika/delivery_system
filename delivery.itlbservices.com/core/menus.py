@@ -24,6 +24,7 @@ def get_user_menus(user):
             menu.append({"name": "Drivers", "url": "/users/drivers/", "icon": "fa-truck"})
             menu.append({"name": "Customers", "url": "/users/customers/", "icon": "fa-user-tag"})
             menu.append({"name": "Currencies", "url": "/currencies", "icon": "fa-dollar-sign"})
+            menu.append({"name": "Accounts", "url": "/accounts", "icon": "fa-money-bill"})
             menu.append({"name": "Company Profile", "url": "/company-profile", "icon": "fa-cog"})
             
         if emp and emp.employee_type == EmployeeTypes.WAREHOUSE_MANAGER:

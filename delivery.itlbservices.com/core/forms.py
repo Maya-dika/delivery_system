@@ -4,7 +4,7 @@ from django_countries import countries
 
 from django.forms import inlineformset_factory
 from .models import RoutingRule, RoutingStep
-from .models import Company, Warehouse, Currency, StockLocation, Address
+from .models import Company, Warehouse, Currency, StockLocation, Address, Account
 from users.models import Employee
 
 
@@ -66,14 +66,27 @@ class AddressForm(forms.ModelForm):
 class WarehouseForm(forms.ModelForm):
     class Meta:
         model = Warehouse
-        fields = ['name', 'warehouse_manager', 'company']
+        fields = ['name', 'warehouse_manager', 'company', 'accounts']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'})
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'accounts': forms.SelectMultiple(attrs={'class': 'form-select', 'size': '5'}),
         }
 
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        self.fields['warehouse_manager'].queryset = Employee.objects.filter(employee_type='warehouse_manager', active=True)
+        
+        # Filter accounts by company
+        if user:
+            self.fields['accounts'].queryset = Account.objects.filter(
+                company=user.company
+            ).select_related('parent', 'currency')
+        elif self.instance and self.instance.pk and self.instance.company:
+            self.fields['accounts'].queryset = Account.objects.filter(
+                company=self.instance.company
+            ).select_related('parent', 'currency')
+        else:
+            self.fields['accounts'].queryset = Account.objects.none()
         
 
 class CurrencyForm(forms.ModelForm):
@@ -126,3 +139,65 @@ RoutingStepFormSet = inlineformset_factory(
     extra=0,
     can_delete=True,
 )
+
+class AccountForm(forms.ModelForm):
+    class Meta:
+        model = Account
+        fields = ['name', 'company', 'parent', 'currency']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'company': forms.Select(attrs={'class': 'form-select'}),
+            'parent': forms.Select(attrs={'class': 'form-select'}),
+            'currency': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if self.instance.pk and self.instance.company:
+            # Get all descendants of this account to prevent circular references
+            descendants = self.get_descendants(self.instance)
+            
+            # Show all accounts in the same company EXCEPT:
+            # 1. The account itself
+            # 2. Its descendants (to prevent circular parent-child relationships)
+            self.fields['parent'].queryset = (
+                Account.objects
+                .filter(company=self.instance.company)
+                .exclude(pk=self.instance.pk)
+                .exclude(pk__in=descendants)
+            )
+        elif 'company' in self.data:
+            # For new accounts, filter by selected company
+            try:
+                company_id = int(self.data.get('company'))
+                self.fields['parent'].queryset = Account.objects.filter(company_id=company_id)
+            except (ValueError, TypeError):
+                self.fields['parent'].queryset = Account.objects.none()
+    
+    def get_descendants(self, account):
+        """Recursively get all descendant account IDs to prevent circular references"""
+        descendants = []
+        children = Account.objects.filter(parent=account)
+        
+        for child in children:
+            descendants.append(child.pk)
+            descendants.extend(self.get_descendants(child))
+        
+        return descendants
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        parent = cleaned_data.get('parent')
+        
+        # Additional validation: ensure parent doesn't create a cycle
+        if parent and self.instance.pk:
+            if parent.pk == self.instance.pk:
+                raise forms.ValidationError("An account cannot be its own parent.")
+            
+            # Check if the selected parent is actually a descendant
+            descendants = self.get_descendants(self.instance)
+            if parent.pk in descendants:
+                raise forms.ValidationError("Cannot set a descendant account as parent (would create a circular reference).")
+        
+        return cleaned_data

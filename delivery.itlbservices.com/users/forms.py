@@ -6,7 +6,7 @@ from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm, Se
 from django.core.exceptions import ValidationError
 
 from .models import User, Employee, Supplier, Customer
-from core.models import Address
+from core.models import Address, Account
 
 import phonenumbers
 
@@ -119,13 +119,14 @@ class UserForm(forms.ModelForm):
 class EmployeeForm(forms.ModelForm):
     class Meta:
         model = Employee
-        fields = ['name', 'email', 'phone_number', 'employee_type', 'commission', 'manager', 'warehouse', 'company', 'active']
+        fields = ['name', 'email', 'phone_number', 'employee_type', 'commission', 'manager', 'warehouse', 'company', 'active','accounts']
         widgets = {
             'employee_type': forms.Select(attrs={'class': 'form-select'}),
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
             'phone_number': forms.TextInput(attrs={'class': 'form-control'}),
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'active': forms.RadioSelect(attrs={'class': 'form-control d-flex'}, choices=[(True,'Active'), (False, 'Inactive')]),
+            'accounts': forms.SelectMultiple(attrs={'class': 'form-select', 'size': '5'}), 
         }
     
     def is_valid(self):
@@ -133,6 +134,7 @@ class EmployeeForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         # self.user_form = OptionalUserForm(*args, **kwargs)
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         self.fields['email'].required = False
         self.fields['manager'].required = False
@@ -151,6 +153,20 @@ class EmployeeForm(forms.ModelForm):
             if emp_type != 'driver':
                 self.fields['commission'].required = False
                 self.fields['commission'].widget = forms.HiddenInput()
+
+        # Filter accounts by company
+        if user:
+            self.fields['accounts'].queryset = Account.objects.filter(
+                company=user.company
+            ).select_related('parent', 'currency')
+        elif self.instance and self.instance.pk and self.instance.company:
+            self.fields['accounts'].queryset = Account.objects.filter(
+                company=self.instance.company
+            ).select_related('parent', 'currency')
+        else:
+            self.fields['accounts'].queryset = Account.objects.none()
+
+        
 
     def clean_phone_number(self):
         phone = (self.cleaned_data.get('phone_number') or '').strip()
@@ -186,19 +202,32 @@ class EmployeeForm(forms.ModelForm):
 class CustomerForm(forms.ModelForm):
     class Meta:
         model = Customer
-        fields = ['name', 'email', 'phone_number', 'user', 'company', 'active']
+        fields = ['name', 'email', 'phone_number', 'user', 'company', 'active', 'accounts']
         widgets = {
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
             'phone_number': forms.TextInput(attrs={'class': 'form-control'}),
             'active': forms.RadioSelect(attrs={'class': 'form-control d-flex'}, choices=[(True,'Active'), (False, 'Inactive')]),
+            'accounts': forms.SelectMultiple(attrs={'class': 'form-select', 'size': '5'}), 
         }
     
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         self.fields['email'].required = False
         self.fields['user'].required = False
         self.fields['active'].label = "Customer Status"
 
+        if user:
+            self.fields['accounts'].queryset = Account.objects.filter(
+                company=user.company
+            ).select_related('parent', 'currency')
+        elif self.instance and self.instance.pk and self.instance.company:
+            self.fields['accounts'].queryset = Account.objects.filter(
+                company=self.instance.company
+            ).select_related('parent', 'currency')
+        else:
+            self.fields['accounts'].queryset = Account.objects.none()
+            
     def clean_phone_number(self):
         phone = (self.cleaned_data.get('phone_number') or '').strip()
         if not phone:
@@ -218,14 +247,29 @@ class CustomerForm(forms.ModelForm):
 class SupplierForm(forms.ModelForm):
     class Meta:
         model = Supplier
-        fields = ['name', 'email', 'phone_number', 'domain_description', 'company', 'warehouse', 'active', 'delivery_pricelist']
+        fields = ['name', 'email', 'phone_number', 'domain_description', 'company', 'warehouse', 'active', 'delivery_pricelist', 'accounts']
         widgets = {
             'warehouse': forms.Select(attrs={'class': 'form-select', 'placeholder': 'Select a Warehouse'}),
             'active': forms.RadioSelect(attrs={'class': 'form-control d-flex'}, choices=[(True,'Active'), (False, 'Inactive')]),
+            'accounts': forms.SelectMultiple(attrs={'class': 'form-select', 'size': '5'}), 
         }
     
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        
+        # Filter accounts by company
+        if user:
+            self.fields['accounts'].queryset = Account.objects.filter(
+                company=user.company
+            ).select_related('parent', 'currency')
+        elif self.instance and self.instance.pk and self.instance.company:
+            self.fields['accounts'].queryset = Account.objects.filter(
+                company=self.instance.company
+            ).select_related('parent', 'currency')
+        else:
+            self.fields['accounts'].queryset = Account.objects.none()
+        
         self.fields['warehouse'].required = False
         self.fields['delivery_pricelist'].required = False
         self.fields['active'].label = "Merchant Status"

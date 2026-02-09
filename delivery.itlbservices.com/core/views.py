@@ -1,3 +1,4 @@
+import datetime
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
 from django.http import JsonResponse
@@ -5,7 +6,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from rest_framework.decorators import api_view
 
-from .models import Company, Warehouse, Currency, StockLocation
+from .models import Company, Warehouse, Currency, StockLocation, Account
 from . import utils
 from .forms import WarehouseForm, CurrencyForm, StockLocationForm, AddressForm
 
@@ -19,6 +20,8 @@ from orders.models import Order, OrderTracking
 from orders.models.order import OrderStatuses
 from django.db.models import Q
 from rest_framework.decorators import api_view
+
+from collections import defaultdict
 
 @login_required
 def dashboard(request):
@@ -103,7 +106,7 @@ def warehouses(request):
 @role_required(allowed_roles=['employee'], employee_types=['admin'])
 def create_warehouse(request):
     if request.method == "POST":
-        form = WarehouseForm(request.POST)
+        form = WarehouseForm(request.POST, user=request.user)
         address_form = AddressForm(request.POST)
 
         if form.is_valid() and address_form.is_valid():
@@ -111,10 +114,23 @@ def create_warehouse(request):
             warehouse = form.save(commit=False)
             warehouse.address = address
             warehouse.save()
+
+            # Save many-to-many relationships
+            form.save_m2m()
+
+            # Create child accounts for each selected parent account
+            for parent_account in warehouse.accounts.all():
+                Account.objects.create(
+                    name=f"{warehouse.name} - {parent_account.name} ({parent_account.currency.symbol})",
+                    currency=parent_account.currency,
+                    parent=parent_account,
+                    company=request.user.company,
+                    created_at=datetime.datetime.now()
+                )
             return redirect('update_warehouse', pk=warehouse.pk)
 
     else:  # GET
-        form = WarehouseForm()
+        form = WarehouseForm(user=request.user)
         address_form = AddressForm()
 
     return render(request, 'forms/form_template.html', {
@@ -133,19 +149,37 @@ def update_warehouse(request, pk):
 
     # GET → Show forms with existing data
     if request.method == "GET":
-        form = WarehouseForm(instance=instance)
+        form = WarehouseForm(instance=instance, user=request.user)
         address_form = AddressForm(instance=instance.address)
     
     # POST → Validate and save
     else:
-        form = WarehouseForm(request.POST, instance=instance)
+        form = WarehouseForm(request.POST, instance=instance, user=request.user)
         address_form = AddressForm(request.POST, instance=instance.address)
 
         if form.is_valid() and address_form.is_valid():
+            old_accounts = set(instance.accounts.all())
             address = address_form.save()
             warehouse = form.save(commit=False)
             warehouse.address = address
             warehouse.save()
+
+            form.save_m2m()
+            
+            # Get new accounts after saving
+            new_accounts = set(warehouse.accounts.all())
+            
+            # Create child accounts only for newly added parent accounts
+            added_accounts = new_accounts - old_accounts
+            for parent_account in added_accounts:
+                Account.objects.create(
+                    name=f"{warehouse.name} - {parent_account.name} ({parent_account.currency.symbol})",
+                    currency=parent_account.currency,
+                    parent=parent_account,
+                    company=request.user.company,
+                    created_at=datetime.datetime.now()
+                )
+
             return redirect('update_warehouse', pk=pk)
 
     return render(request, 'forms/form_template.html', {
@@ -463,3 +497,82 @@ def routing_rule_form_view(request, pk=None):
         'instance': instance,
         'warehouses': Warehouse.objects.filter(active=True).all(),  # For the dynamic row select box
     })
+
+@login_required
+@role_required(allowed_roles=['employee'], employee_types=['admin'])
+def accounts_list(request):
+    accounts = Account.objects.select_related(
+        'company', 'currency', 'parent'
+    )
+
+    tree = defaultdict(list)
+    for account in accounts:
+        tree[account.parent_id].append(account)
+
+    return render(request, 'accounts.html', {
+        'tree': tree
+    })
+
+from django.shortcuts import get_object_or_404, redirect
+from .forms import AccountForm
+
+@login_required
+@role_required(allowed_roles=['employee'], employee_types=['admin'])
+def account_form_view(request, pk=None):
+    account = get_object_or_404(Account, pk=pk) if pk else None
+
+    if request.method == 'POST':
+        form = AccountForm(request.POST, instance=account)
+        if form.is_valid():
+            form.save()
+            return redirect('accounts')
+    else:
+        form = AccountForm(instance=account)
+
+    return render(request, 'forms/form_template.html', {
+        'form': form,
+        'form_title': 'Create Account' if not account else 'Update Account',
+        'redirect_back_url': '/accounts',
+    })
+
+from django.http import HttpResponse, JsonResponse
+from .models import Account
+from core import utils  # wherever get_object_references lives
+
+@login_required
+@role_required(allowed_roles=['employee'], employee_types=['admin'])
+def delete_account(request, pk):
+    if request.method != 'POST':
+        return HttpResponse(status=405)
+
+    account = Account.objects.filter(pk=pk).first()
+    if not account:
+        return JsonResponse({
+            'success': False,
+            'error': 'Account not found'
+        }, status=404)
+
+    # Prevent deleting parent with children
+    if account.children.exists():
+        return JsonResponse({
+            'success': False,
+            'error': 'Cannot delete account with child accounts'
+        }, status=400)
+
+    # Generic reference check (journals, transactions, etc.)
+    refs = utils.get_object_references(account, include_counts=False)
+    if refs:
+        names = []
+        for r in refs[:3]:
+            try:
+                names.append(r['model'].__name__)
+            except Exception:
+                names.append('Related data')
+
+        return JsonResponse({
+            'success': False,
+            'error': f"Cannot delete account: referenced by {', '.join(names)}"
+        }, status=400)
+
+    account.delete()
+    return JsonResponse({'success': True, 'message': 'Account deleted'})
